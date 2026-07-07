@@ -1,0 +1,29 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build Swift package
+        run: swift build --product MoreDock
+
+      - name: Package app
+        run: ./scripts/package_release.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MoreDock-macOS
+          path: |
+            dist/*.zip
+            dist/*.dmg
+            dist/SHA256SUMS.txt
