@@ -69,13 +69,14 @@ The local package is ad-hoc signed when no Developer ID certificate is configure
 
 Tagged releases are signed and notarized in GitHub Actions when these repository secrets are configured:
 
-- `MACOS_DEVELOPER_ID_CERTIFICATE_BASE64`: base64-encoded `.p12` export of the Developer ID Application certificate and private key.
-- `MACOS_DEVELOPER_ID_CERTIFICATE_PASSWORD`: password used when exporting the `.p12`.
-- `MACOS_KEYCHAIN_PASSWORD`: temporary CI keychain password.
-- `MACOS_CODESIGN_IDENTITY`: exact Developer ID Application identity, for example `Developer ID Application: Your Name (TEAMID)`.
+- `APPLE_CERTIFICATE`: base64-encoded `.p12` export of the Developer ID Application certificate and private key.
+- `APPLE_CERTIFICATE_PASSWORD`: password used when exporting the `.p12`.
+- `APPLE_SIGNING_IDENTITY`: exact Developer ID Application identity, for example `Developer ID Application: Your Name (TEAMID)`.
 - `APPLE_ID`: Apple ID email used for Developer ID notarization.
 - `APPLE_TEAM_ID`: Apple Developer Team ID.
-- `APPLE_APP_SPECIFIC_PASSWORD`: app-specific password for `notarytool`.
+- `APPLE_PASSWORD`: app-specific password for `notarytool`.
+
+`TAURI_SIGNING_PRIVATE_KEY` is not used by MoreDock because this is a native Swift/AppKit app, not a Tauri app.
 
 Create a release by pushing a version tag:
 
