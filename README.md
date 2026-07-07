@@ -65,6 +65,25 @@ dist/SHA256SUMS.txt
 
 The local package is ad-hoc signed when no Developer ID certificate is configured. For public distribution without Gatekeeper warnings, build with a Developer ID certificate via `CODESIGN_IDENTITY` and notarize the resulting artifacts with Apple.
 
+## GitHub Release Signing
+
+Tagged releases are signed and notarized in GitHub Actions when these repository secrets are configured:
+
+- `MACOS_DEVELOPER_ID_CERTIFICATE_BASE64`: base64-encoded `.p12` export of the Developer ID Application certificate and private key.
+- `MACOS_DEVELOPER_ID_CERTIFICATE_PASSWORD`: password used when exporting the `.p12`.
+- `MACOS_KEYCHAIN_PASSWORD`: temporary CI keychain password.
+- `MACOS_CODESIGN_IDENTITY`: exact Developer ID Application identity, for example `Developer ID Application: Your Name (TEAMID)`.
+- `APPLE_ID`: Apple ID email used for Developer ID notarization.
+- `APPLE_TEAM_ID`: Apple Developer Team ID.
+- `APPLE_APP_SPECIFIC_PASSWORD`: app-specific password for `notarytool`.
+
+Create a release by pushing a version tag:
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
 ## Packaging Notes
 
 The build helper:
