@@ -7,7 +7,7 @@ final class SettingsWindowController: NSWindowController {
         let content = SettingsView(settings: settings)
         let hosting = NSHostingView(rootView: content)
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 520),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 620),
             styleMask: [.titled, .closable, .miniaturizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -40,11 +40,20 @@ struct SettingsView: View {
                     VStack(spacing: 14) {
                         Toggle("Enable MoreDock", isOn: $settings.isEnabled)
                         Toggle("Show on all screens", isOn: $settings.showOnAllDisplays)
-                        Toggle("Auto-dim when idle", isOn: $settings.autoHide)
+                        Toggle("Follow native Dock", isOn: $settings.followSystemDock)
                         Toggle("Respect menu bar safe area", isOn: $settings.respectMenuBarSafeArea)
                     }
                     .toggleStyle(.switch)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                GroupBox {
+                    Picker("Open apps on", selection: $settings.activationDisplayMode) {
+                        ForEach(ActivationDisplayMode.allCases) { mode in
+                            Text(mode.title).tag(mode)
+                        }
+                    }
+                    .pickerStyle(.segmented)
                 }
 
                 GroupBox {
@@ -55,6 +64,7 @@ struct SettingsView: View {
                             }
                         }
                         .pickerStyle(.segmented)
+                        .disabled(settings.followSystemDock)
 
                         LabeledContent("Icon size") {
                             HStack {
@@ -64,6 +74,7 @@ struct SettingsView: View {
                                     .frame(width: 34, alignment: .trailing)
                             }
                         }
+                        .disabled(settings.followSystemDock)
 
                         LabeledContent("Opacity") {
                             HStack {
@@ -80,6 +91,9 @@ struct SettingsView: View {
                     VStack(spacing: 14) {
                         Toggle("Liquid glass material", isOn: $settings.liquidGlass)
                         Toggle("Icon magnification", isOn: $settings.magnification)
+                            .disabled(settings.followSystemDock)
+                        Toggle("Auto-hide", isOn: $settings.autoHide)
+                            .disabled(settings.followSystemDock)
                     }
                     .toggleStyle(.switch)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -89,7 +103,7 @@ struct SettingsView: View {
             }
             .padding(28)
         }
-        .frame(minWidth: 500, minHeight: 500)
+        .frame(minWidth: 520, minHeight: 600)
     }
 
     private var header: some View {

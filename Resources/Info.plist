@@ -28,5 +28,13 @@
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://github.com/ArioMoniri/moredock/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>86+JGYCoJKBqcZre18Yplzro4++nNgRfVPBrCXN56NU=</string>
 </dict>
 </plist>

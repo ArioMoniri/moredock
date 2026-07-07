@@ -1,10 +1,16 @@
 import AppKit
+import Sparkle
 import SwiftUI
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let settings = SettingsStore()
     private lazy var dockController = DockController(settings: settings)
+    private let updaterController = SPUStandardUpdaterController(
+        startingUpdater: true,
+        updaterDelegate: nil,
+        userDriverDelegate: nil
+    )
     private var settingsWindowController: SettingsWindowController?
     private var statusItem: NSStatusItem?
 
@@ -12,6 +18,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         configureStatusItem()
         dockController.start()
+
+        if CommandLine.arguments.contains("--show-settings") {
+            openSettings()
+        }
     }
 
     private func configureStatusItem() {
@@ -36,6 +46,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let refreshItem = NSMenuItem(title: "Refresh Now", action: #selector(refreshNow), keyEquivalent: "r")
         refreshItem.target = self
         menu.addItem(refreshItem)
+
+        let updateItem = NSMenuItem(title: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "u")
+        updateItem.target = self
+        menu.addItem(updateItem)
 
         menu.addItem(NSMenuItem.separator())
         let quitItem = NSMenuItem(title: "Quit MoreDock", action: #selector(quit), keyEquivalent: "q")
@@ -62,6 +76,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func refreshNow() {
         dockController.refreshAll()
+    }
+
+    @objc private func checkForUpdates(_ sender: NSMenuItem) {
+        updaterController.checkForUpdates(sender)
     }
 
     @objc private func quit() {

@@ -12,6 +12,8 @@ ZIP_PATH="${DIST_DIR}/${PRODUCT_NAME}-${VERSION}-macOS.zip"
 DMG_PATH="${DIST_DIR}/${PRODUCT_NAME}-${VERSION}-macOS.dmg"
 CHECKSUM_PATH="${DIST_DIR}/SHA256SUMS.txt"
 NOTARY_ZIP_PATH="${DIST_DIR}/${PRODUCT_NAME}-${VERSION}-notary.zip"
+APPCAST_PATH="${DIST_DIR}/appcast.xml"
+SPARKLE_BIN_DIR="${REPO_ROOT}/.build/artifacts/sparkle/Sparkle/bin"
 
 rm -rf -- "${DIST_DIR}"
 mkdir -p -- "${DIST_DIR}"
@@ -72,12 +74,47 @@ if [[ -n "${APPLE_ID:-}" && -n "${APPLE_TEAM_ID:-}" && -n "${APPLE_APP_SPECIFIC_
   xcrun stapler staple "${DMG_PATH}"
 fi
 
+if [[ -n "${SPARKLE_PRIVATE_KEY:-}" ]]; then
+  if [[ ! -x "${SPARKLE_BIN_DIR}/generate_appcast" ]]; then
+    echo "error: Sparkle generate_appcast tool was not found" >&2
+    exit 1
+  fi
+
+  UPDATES_DIR="${REPO_ROOT}/.build/sparkle-updates"
+  DOWNLOAD_PREFIX="${SPARKLE_DOWNLOAD_URL_PREFIX:-https://github.com/ArioMoniri/moredock/releases/download/v${VERSION}/}"
+  RELEASE_NOTES_PATH="${UPDATES_DIR}/$(basename "${DMG_PATH}" .dmg).md"
+
+  rm -rf -- "${UPDATES_DIR}"
+  mkdir -p -- "${UPDATES_DIR}"
+  cp -- "${DMG_PATH}" "${UPDATES_DIR}/"
+  cat > "${RELEASE_NOTES_PATH}" <<NOTES
+# MoreDock ${VERSION}
+
+- Native multi-display dock panels.
+- Follows macOS Dock position, size, magnification, and auto-hide timing.
+- Sparkle-powered app updates.
+NOTES
+
+  echo "${SPARKLE_PRIVATE_KEY}" | "${SPARKLE_BIN_DIR}/generate_appcast" \
+    --ed-key-file - \
+    --download-url-prefix "${DOWNLOAD_PREFIX}" \
+    --embed-release-notes \
+    -o "${APPCAST_PATH}" \
+    "${UPDATES_DIR}"
+fi
+
 (
   cd "${DIST_DIR}"
   shasum -a 256 "$(basename "${ZIP_PATH}")" "$(basename "${DMG_PATH}")" > "${CHECKSUM_PATH}"
+  if [[ -f "$(basename "${APPCAST_PATH}")" ]]; then
+    shasum -a 256 "$(basename "${APPCAST_PATH}")" >> "${CHECKSUM_PATH}"
+  fi
 )
 
 echo "Packaged:"
 echo "  ${ZIP_PATH}"
 echo "  ${DMG_PATH}"
+if [[ -f "${APPCAST_PATH}" ]]; then
+  echo "  ${APPCAST_PATH}"
+fi
 echo "  ${CHECKSUM_PATH}"

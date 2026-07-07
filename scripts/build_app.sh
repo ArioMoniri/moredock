@@ -11,8 +11,10 @@ APP_PATH="${APP_PATH:-"${REPO_ROOT}/.build/${PRODUCT_NAME}.app"}"
 CONTENTS_DIR="${APP_PATH}/Contents"
 MACOS_DIR="${CONTENTS_DIR}/MacOS"
 APP_RESOURCES_DIR="${CONTENTS_DIR}/Resources"
+FRAMEWORKS_DIR="${CONTENTS_DIR}/Frameworks"
 SOURCE_RESOURCES_DIR="${REPO_ROOT}/Resources"
 SOURCE_INFO_PLIST="${SOURCE_RESOURCES_DIR}/Info.plist"
+SPARKLE_FRAMEWORK="${REPO_ROOT}/.build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework"
 
 if ! command -v swift >/dev/null 2>&1; then
   echo "error: swift is not available on PATH" >&2
@@ -48,11 +50,16 @@ fi
 
 echo "Assembling ${APP_PATH}..."
 rm -rf -- "${APP_PATH}"
-mkdir -p -- "${MACOS_DIR}" "${APP_RESOURCES_DIR}"
+mkdir -p -- "${MACOS_DIR}" "${APP_RESOURCES_DIR}" "${FRAMEWORKS_DIR}"
 
 cp -- "${SOURCE_INFO_PLIST}" "${CONTENTS_DIR}/Info.plist"
 cp -- "${EXECUTABLE_PATH}" "${MACOS_DIR}/${PRODUCT_NAME}"
 chmod 755 "${MACOS_DIR}/${PRODUCT_NAME}"
+
+if [[ -d "${SPARKLE_FRAMEWORK}" ]]; then
+  cp -R -- "${SPARKLE_FRAMEWORK}" "${FRAMEWORKS_DIR}/Sparkle.framework"
+  install_name_tool -add_rpath "@loader_path/../Frameworks" "${MACOS_DIR}/${PRODUCT_NAME}" 2>/dev/null || true
+fi
 
 if [[ -d "${SOURCE_RESOURCES_DIR}" ]]; then
   while IFS= read -r -d '' item; do

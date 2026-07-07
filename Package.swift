@@ -9,7 +9,15 @@ let package = Package(
     products: [
         .executable(name: "MoreDock", targets: ["MoreDock"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.4")
+    ],
     targets: [
-        .executableTarget(name: "MoreDock")
+        .executableTarget(
+            name: "MoreDock",
+            dependencies: [
+                .product(name: "Sparkle", package: "Sparkle")
+            ]
+        )
     ]
 )

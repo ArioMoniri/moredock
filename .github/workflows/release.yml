@@ -61,6 +61,8 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          SPARKLE_DOWNLOAD_URL_PREFIX: https://github.com/ArioMoniri/moredock/releases/download/${{ github.ref_name }}/
         run: |
           VERSION="${GITHUB_REF_NAME#v}" ./scripts/package_release.sh
 
@@ -70,5 +72,6 @@ jobs:
           files: |
             dist/*.zip
             dist/*.dmg
+            dist/appcast.xml
             dist/SHA256SUMS.txt
           generate_release_notes: true

@@ -1,61 +1,66 @@
-# MoreDock
+# MoreDock 🧊
 
-MoreDock is a native macOS menu-bar app that shows a lightweight glass dock on every connected display. It runs as an accessory app, so its icon is not shown in the macOS Dock while it is working.
+MoreDock is a native macOS menu-bar app that puts a Dock-style launcher on every display.
 
-## Layout
+It follows your real Dock settings by default: location, icon size, magnification, auto-hide, reveal delay, and reveal animation timing. It also runs as an accessory app, so MoreDock itself does not show up as an extra icon in the macOS Dock.
 
-Expected project layout:
+![MoreDock dock preview](docs/images/moredock-dock.png)
 
-```text
-Package.swift
-Sources/MoreDock/
-Resources/Info.plist
-Resources/MoreDock.icns
-Resources/
-scripts/build_app.sh
-scripts/package_release.sh
-```
+![MoreDock settings](docs/images/moredock-settings.png)
 
-The executable product should be named `MoreDock`.
+## What It Does ✨
 
-## Features
+- Shows a lightweight Dock panel on every connected screen.
+- Mirrors the native Dock settings from `com.apple.dock`.
+- Updates while running when the native Dock location, size, or auto-hide settings change.
+- Tracks running regular macOS apps and activates them from any display.
+- Can either use normal macOS app activation or move windows to the display whose MoreDock panel was clicked.
+- Uses a native SwiftUI/AppKit settings window with glassy macOS materials.
+- Includes Sparkle updates with a **Check for Updates...** menu item.
+- Runs with `LSUIElement`, so there is no extra Dock icon.
 
-- Shows dock panels on all connected screens.
-- Tracks running regular macOS apps and lets you activate them from any display.
-- Native settings window with liquid-glass visual material.
-- Menu-bar controls for settings, refresh, enable/disable, and quit.
-- `LSUIElement` app metadata keeps MoreDock out of the Dock and app switcher.
+## Native Dock Sync 🖥️
 
-## Build The App
+When **Follow native Dock** is on, MoreDock reads:
 
-Run:
+- `orientation`
+- `tilesize`
+- `largesize`
+- `magnification`
+- `autohide`
+- `autohide-delay`
+- `autohide-time-modifier`
+
+That keeps MoreDock aligned with the Dock you already configured in macOS.
+
+## Opening Apps On Displays 🪟
+
+The **Open apps on** setting has two modes:
+
+- **macOS**: let the system decide, exactly like a normal Dock click.
+- **Clicked Display**: activate the app, then move its windows to the display where you clicked the MoreDock icon.
+
+Clicked Display uses the macOS Accessibility API. macOS may ask for Accessibility permission the first time this mode moves a window.
+
+## Build 🛠️
 
 ```sh
 ./scripts/build_app.sh
 ```
 
-By default the script builds the Swift package in release mode and writes:
+The app bundle is written to:
 
 ```text
 .build/MoreDock.app
 ```
 
-You can override the build configuration or output path:
-
-```sh
-CONFIGURATION=debug ./scripts/build_app.sh
-APP_PATH=/tmp/MoreDock.app ./scripts/build_app.sh
-```
-
-## Package A Release
-
-Run:
+## Package 📦
 
 ```sh
 ./scripts/package_release.sh
 ```
 
-This writes:
+This creates:
 
 ```text
 dist/MoreDock-0.1.0-macOS.zip
@@ -63,36 +68,49 @@ dist/MoreDock-0.1.0-macOS.dmg
 dist/SHA256SUMS.txt
 ```
 
-The local package is ad-hoc signed when no Developer ID certificate is configured. For public distribution without Gatekeeper warnings, build with a Developer ID certificate via `CODESIGN_IDENTITY` and notarize the resulting artifacts with Apple.
+If `SPARKLE_PRIVATE_KEY` is set, packaging also creates:
 
-## GitHub Release Signing
+```text
+dist/appcast.xml
+```
 
-Tagged releases are signed and notarized in GitHub Actions when these repository secrets are configured:
+Local builds are ad-hoc signed unless `CODESIGN_IDENTITY` is set.
 
-- `APPLE_CERTIFICATE`: base64-encoded `.p12` export of the Developer ID Application certificate and private key.
-- `APPLE_CERTIFICATE_PASSWORD`: password used when exporting the `.p12`.
-- `APPLE_SIGNING_IDENTITY`: exact Developer ID Application identity, for example `Developer ID Application: Your Name (TEAMID)`.
-- `APPLE_ID`: Apple ID email used for Developer ID notarization.
+## GitHub Release Signing 🔐
+
+Tagged releases are signed, notarized, and published from GitHub Actions with these secrets:
+
+- `APPLE_CERTIFICATE`: base64 `.p12` export of the Developer ID Application certificate and private key.
+- `APPLE_CERTIFICATE_PASSWORD`: password for the `.p12`.
+- `APPLE_SIGNING_IDENTITY`: exact identity, for example `Developer ID Application: Your Name (TEAMID)`.
+- `APPLE_ID`: Apple ID email for notarization.
 - `APPLE_TEAM_ID`: Apple Developer Team ID.
 - `APPLE_PASSWORD`: app-specific password for `notarytool`.
+- `SPARKLE_PRIVATE_KEY`: Sparkle EdDSA private key used to sign `appcast.xml`.
 
-`TAURI_SIGNING_PRIVATE_KEY` is not used by MoreDock because this is a native Swift/AppKit app, not a Tauri app.
+`TAURI_SIGNING_PRIVATE_KEY` is not used here; MoreDock is Swift/AppKit, not Tauri.
 
-Create a release by pushing a version tag:
+Publish a release:
 
 ```sh
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-## Packaging Notes
+## Screenshots 🖼️
 
-The build helper:
+The README screenshots are rendered from the real SwiftUI/AppKit views:
 
-- runs `swift build --product MoreDock`
-- creates `MoreDock.app/Contents/MacOS`
-- copies `Resources/Info.plist` to `MoreDock.app/Contents/Info.plist`
-- copies the built `MoreDock` executable into the app bundle
-- copies resource files from `Resources/` into `Contents/Resources`, excluding `Info.plist`
+```sh
+xcrun swiftc -parse-as-library \
+  Sources/MoreDock/AccessibilityWindowMover.swift \
+  Sources/MoreDock/SettingsStore.swift \
+  Sources/MoreDock/SystemDockPreferences.swift \
+  Sources/MoreDock/DockController.swift \
+  Sources/MoreDock/DockPanelController.swift \
+  Sources/MoreDock/SettingsWindowController.swift \
+  scripts/render_docs_screenshots.swift \
+  -o .build/render_docs_screenshots
 
-The release helper also ad-hoc signs the app locally when no `CODESIGN_IDENTITY` is provided, then creates zip and dmg artifacts. Set `CODESIGN_IDENTITY` to use a Developer ID certificate.
+.build/render_docs_screenshots docs/images
+```

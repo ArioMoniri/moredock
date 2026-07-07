@@ -6,6 +6,8 @@ final class DockPanelController {
     private let panel: NSPanel
     private let hostingView: NSHostingView<DockPanelView>
     private let screenNumber: DisplayID
+    private var isRevealed = true
+    private var revealRequestedAt: Date?
 
     init(screenNumber: DisplayID) {
         self.screenNumber = screenNumber
@@ -23,16 +25,25 @@ final class DockPanelController {
         panel.hasShadow = true
         panel.ignoresMouseEvents = false
 
-        hostingView = NSHostingView(rootView: DockPanelView(apps: [], settings: SnapshotSettings()))
+        hostingView = NSHostingView(rootView: DockPanelView(apps: [], settings: SnapshotSettings(), targetVisibleFrame: .zero))
         hostingView.wantsLayer = true
         panel.contentView = hostingView
     }
 
-    func update(screen: NSScreen, apps: [DockAppItem], settings: SettingsStore) {
+    func update(screen: NSScreen, apps: [DockAppItem], settings: DockRuntimeSettings, now: Date) {
         let snapshot = SnapshotSettings(settings)
-        hostingView.rootView = DockPanelView(apps: apps, settings: snapshot)
-        panel.alphaValue = settings.autoHide ? 0.72 : 1.0
-        panel.setFrame(frame(for: screen, apps: apps, settings: snapshot), display: true)
+        hostingView.rootView = DockPanelView(apps: apps, settings: snapshot, targetVisibleFrame: screen.visibleFrame)
+
+        updateRevealState(screen: screen, settings: snapshot, now: now)
+
+        let targetFrame = frame(for: screen, apps: apps, settings: snapshot, revealed: isRevealed)
+        let animationDuration = settings.autoHide ? settings.autoHideDuration : 0.16
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = animationDuration
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().setFrame(targetFrame, display: true)
+            panel.animator().alphaValue = isRevealed ? 1.0 : 0.08
+        }
 
         if !panel.isVisible {
             panel.orderFrontRegardless()
@@ -43,40 +54,91 @@ final class DockPanelController {
         panel.orderOut(nil)
     }
 
-    private func frame(for screen: NSScreen, apps: [DockAppItem], settings: SnapshotSettings) -> NSRect {
-        let visible = settings.respectMenuBarSafeArea ? screen.visibleFrame : screen.frame
+    private func frame(
+        for screen: NSScreen,
+        apps: [DockAppItem],
+        settings: SnapshotSettings,
+        revealed: Bool
+    ) -> NSRect {
+        let visible = settings.respectMenuBarSafeArea && !settings.followsSystemDock ? screen.visibleFrame : screen.frame
         let itemCount = max(apps.count, 1)
-        let gap: CGFloat = 8
-        let padding: CGFloat = 12
+        let gap: CGFloat = max(6, CGFloat(settings.iconSize) * 0.16)
+        let padding: CGFloat = max(8, CGFloat(settings.iconSize) * 0.22)
         let icon = CGFloat(settings.iconSize)
         let thickness = icon + padding * 2
         let length = min(CGFloat(itemCount) * (icon + gap) - gap + padding * 2, max(240, visible.width - 48))
-        let inset: CGFloat = 10
+        let inset: CGFloat = settings.autoHide || settings.followsSystemDock ? 0 : 8
 
         switch settings.edge {
         case .bottom:
-            return NSRect(
+            var frame = NSRect(
                 x: visible.midX - length / 2,
                 y: visible.minY + inset,
                 width: length,
                 height: thickness
             )
+            if !revealed {
+                frame.origin.y = screen.frame.minY - frame.height + 3
+            }
+            return frame
         case .left:
             let height = min(CGFloat(itemCount) * (icon + gap) - gap + padding * 2, max(240, visible.height - 48))
-            return NSRect(
+            var frame = NSRect(
                 x: visible.minX + inset,
                 y: visible.midY - height / 2,
                 width: thickness,
                 height: height
             )
+            if !revealed {
+                frame.origin.x = screen.frame.minX - frame.width + 3
+            }
+            return frame
         case .right:
             let height = min(CGFloat(itemCount) * (icon + gap) - gap + padding * 2, max(240, visible.height - 48))
-            return NSRect(
+            var frame = NSRect(
                 x: visible.maxX - thickness - inset,
                 y: visible.midY - height / 2,
                 width: thickness,
                 height: height
             )
+            if !revealed {
+                frame.origin.x = screen.frame.maxX - 3
+            }
+            return frame
+        }
+    }
+
+    private func updateRevealState(screen: NSScreen, settings: SnapshotSettings, now: Date) {
+        guard settings.autoHide else {
+            isRevealed = true
+            revealRequestedAt = nil
+            return
+        }
+
+        let mouse = NSEvent.mouseLocation
+        let wantsReveal = screen.frame.contains(mouse) && isMouseNearDockEdge(mouse, screen: screen, settings: settings)
+        if wantsReveal || panel.frame.insetBy(dx: -8, dy: -8).contains(mouse) {
+            if revealRequestedAt == nil {
+                revealRequestedAt = now
+            }
+            if now.timeIntervalSince(revealRequestedAt ?? now) >= settings.autoHideDelay {
+                isRevealed = true
+            }
+        } else {
+            revealRequestedAt = nil
+            isRevealed = false
+        }
+    }
+
+    private func isMouseNearDockEdge(_ point: NSPoint, screen: NSScreen, settings: SnapshotSettings) -> Bool {
+        let revealBand = max(4, CGFloat(settings.iconSize) * 0.20)
+        switch settings.edge {
+        case .bottom:
+            return point.y <= screen.frame.minY + revealBand
+        case .left:
+            return point.x <= screen.frame.minX + revealBand
+        case .right:
+            return point.x >= screen.frame.maxX - revealBand
         }
     }
 }
@@ -84,29 +146,44 @@ final class DockPanelController {
 struct SnapshotSettings: Equatable {
     var edge: DockEdge = .bottom
     var iconSize: Double = 48
+    var magnifiedIconSize: Double = 60
     var magnification = true
     var opacity = 0.82
     var liquidGlass = true
     var autoHide = false
+    var autoHideDelay = 0.05
+    var autoHideDuration = 0.20
     var respectMenuBarSafeArea = true
+    var followsSystemDock = true
+    var activationDisplayMode: ActivationDisplayMode = .native
 
     init() {}
 
     @MainActor
     init(_ settings: SettingsStore) {
+        self.init(DockRuntimeSettings(settings: settings))
+    }
+
+    init(_ settings: DockRuntimeSettings) {
         edge = settings.edge
         iconSize = settings.iconSize
+        magnifiedIconSize = settings.magnifiedIconSize
         magnification = settings.magnification
         opacity = settings.opacity
         liquidGlass = settings.liquidGlass
         autoHide = settings.autoHide
+        autoHideDelay = settings.autoHideDelay
+        autoHideDuration = settings.autoHideDuration
         respectMenuBarSafeArea = settings.respectMenuBarSafeArea
+        followsSystemDock = settings.followsSystemDock
+        activationDisplayMode = settings.activationDisplayMode
     }
 }
 
 struct DockPanelView: View {
     let apps: [DockAppItem]
     let settings: SnapshotSettings
+    let targetVisibleFrame: NSRect
 
     var body: some View {
         DockVisualEffect(liquidGlass: settings.liquidGlass)
@@ -114,7 +191,7 @@ struct DockPanelView: View {
                 ScrollView(settings.edge == .bottom ? .horizontal : .vertical, showsIndicators: false) {
                     stack {
                         ForEach(apps) { item in
-                            DockIconButton(item: item, settings: settings)
+                            DockIconButton(item: item, settings: settings, targetVisibleFrame: targetVisibleFrame)
                         }
                     }
                     .padding(12)
@@ -141,6 +218,7 @@ struct DockPanelView: View {
 private struct DockIconButton: View {
     let item: DockAppItem
     let settings: SnapshotSettings
+    let targetVisibleFrame: NSRect
     @State private var isHovering = false
 
     var body: some View {
@@ -162,12 +240,25 @@ private struct DockIconButton: View {
     }
 
     private var iconSize: CGFloat {
-        CGFloat(settings.iconSize)
+        if isHovering && settings.magnification {
+            return CGFloat(settings.magnifiedIconSize)
+        }
+        return CGFloat(settings.iconSize)
     }
 
     private func activate() {
         if let app = NSRunningApplication(processIdentifier: item.processIdentifier) {
-            app.activate(options: [.activateIgnoringOtherApps])
+            if #available(macOS 14.0, *) {
+                app.activate()
+            } else {
+                app.activate(options: [.activateIgnoringOtherApps])
+            }
+
+            if settings.activationDisplayMode == .clickedDisplay, !targetVisibleFrame.isEmpty {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+                    AccessibilityWindowMover.moveWindows(for: item.processIdentifier, to: targetVisibleFrame)
+                }
+            }
         }
     }
 }

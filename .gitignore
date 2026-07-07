@@ -1,5 +1,8 @@
 .build/
+.claude-flow/
 dist/
+docs/images/moredock-desktop.png
+private/
 .swiftpm/
 DerivedData/
 *.xcuserdata/

@@ -23,6 +23,7 @@ final class DockController {
     private var appItems: [DockAppItem] = []
     private var cancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
+    private var appRefreshCounter = 0
 
     init(settings: SettingsStore) {
         self.settings = settings
@@ -44,10 +45,9 @@ final class DockController {
             }
             .store(in: &cancellables)
 
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 1.25, repeats: true) { [weak self] _ in
+        refreshTimer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                self?.refreshApps()
-                self?.syncPanels()
+                self?.tick()
             }
         }
 
@@ -56,6 +56,15 @@ final class DockController {
 
     func refreshAll() {
         refreshApps()
+        syncPanels()
+    }
+
+    private func tick() {
+        appRefreshCounter += 1
+        if appRefreshCounter >= 10 {
+            appRefreshCounter = 0
+            refreshApps()
+        }
         syncPanels()
     }
 
@@ -102,7 +111,12 @@ final class DockController {
             guard let number = screen.screenNumber else { continue }
             let panel = panels[number] ?? DockPanelController(screenNumber: number)
             panels[number] = panel
-            panel.update(screen: screen, apps: appItems, settings: settings)
+            panel.update(
+                screen: screen,
+                apps: appItems,
+                settings: SystemDockPreferences.runtimeSettings(fallback: settings),
+                now: Date()
+            )
         }
     }
 
