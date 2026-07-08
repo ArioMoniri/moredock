@@ -1,6 +1,6 @@
 cask "moredock" do
   version "0.1.5"
-  sha256 "818d01da2644c7678bdbd8414284c46fe9649a5ed953019fe892199e8cf022aa"
+  sha256 "5566750a340e0fedde231a7663cbcad37200fb230016543db45aa78bb36a55a8"
 
   url "https://github.com/ArioMoniri/moredock/releases/download/v#{version}/MoreDock-#{version}-macOS.dmg"
   name "MoreDock"
