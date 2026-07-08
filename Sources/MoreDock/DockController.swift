@@ -121,7 +121,7 @@ final class DockController {
         }
 
         let runtimeSettings = SystemDockPreferences.runtimeSettings(fallback: settings)
-        var targetScreens = settings.showOnAllDisplays ? NSScreen.screens : [NSScreen.main].compactMap { $0 }
+        var targetScreens = settings.showOnAllDisplays ? NSScreen.screens : [SystemDockPreferences.primaryDisplayScreen()].compactMap { $0 }
         if settings.followSystemDock, settings.hideOnNativeDockScreen,
            let nativeDockScreenNumber = SystemDockPreferences
             .nativeDockScreen(for: NSScreen.screens, edge: runtimeSettings.edge)?

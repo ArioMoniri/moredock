@@ -83,7 +83,16 @@ enum SystemDockPreferences {
             }
         }
 
-        return reservedScreens.first ?? screens.first ?? NSScreen.main
+        return reservedScreens.first ?? primaryDisplayScreen(from: screens) ?? screens.first
+    }
+
+    static func primaryDisplayScreen(from screens: [NSScreen] = NSScreen.screens) -> NSScreen? {
+        let primaryDisplayID = NSNumber(value: CGMainDisplayID())
+        return screens.first { screen in
+            screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber == primaryDisplayID
+        } ?? screens.first { screen in
+            screen.frame.origin == .zero
+        } ?? screens.first
     }
 
     static func persistentDockItems() -> [DockAppItem] {

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PRODUCT_NAME="MoreDock"
-VERSION="${VERSION:-0.1.6}"
+VERSION="${VERSION:-0.1.7}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
@@ -91,9 +91,9 @@ if [[ -n "${SPARKLE_PRIVATE_KEY:-}" ]]; then
 # MoreDock ${VERSION}
 
 - Native multi-display dock panels.
-- Adds editable macOS Dock settings inside MoreDock.
-- Improves native Dock display exclusion and display-junction avoidance.
-- Stops repeated Accessibility prompts during clicked-display moves.
+- Removes focus-dependent screen selection from native Dock exclusion.
+- Keeps extra docks visible above focused apps on other displays.
+- Keeps editable native macOS Dock settings inside MoreDock.
 - Sparkle-powered app updates.
 NOTES
 

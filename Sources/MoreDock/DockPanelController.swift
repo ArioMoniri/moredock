@@ -17,7 +17,7 @@ final class DockPanelController {
             backing: .buffered,
             defer: false
         )
-        panel.level = .floating
+        panel.level = .statusBar
         panel.collectionBehavior = [.canJoinAllSpaces, .stationary, .fullScreenAuxiliary]
         panel.hidesOnDeactivate = false
         panel.isOpaque = false
@@ -45,7 +45,7 @@ final class DockPanelController {
             panel.animator().alphaValue = isRevealed ? 1.0 : 0.0
         }
 
-        if !panel.isVisible {
+        if !panel.isVisible || isRevealed {
             panel.orderFrontRegardless()
         }
     }

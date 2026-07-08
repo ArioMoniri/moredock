@@ -1,5 +1,14 @@
 # Release Notes
 
+## 0.1.7
+
+This release fixes the focus-dependent display behavior.
+
+- 🖱️ Uses `CGMainDisplayID()` instead of `NSScreen.main` for native Dock display fallback.
+- 🖥️ Prevents focus changes on another display from causing the wrong MoreDock panel to hide.
+- 📌 Raises revealed extra docks above focused app windows with status-bar window level.
+- 🎛️ Keeps the native macOS Dock settings controls added in 0.1.6.
+
 ## 0.1.6
 
 This release focuses on the unresolved native-Dock matching and settings issues.
