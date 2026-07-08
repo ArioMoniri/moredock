@@ -1,5 +1,13 @@
 # Release Notes
 
+## 0.1.2
+
+This release replaces the app icon with a simpler Dock-focused symbol.
+
+- 🎨 Uses a single minimal Dock pill element.
+- 🧊 Removes monitor/display structures from the icon.
+- 📦 Keeps the same signed, notarized, Sparkle-enabled release flow.
+
 ## 0.1.1
 
 MoreDock now tracks the native Dock more closely and avoids drawing over the display that already owns the macOS Dock.
