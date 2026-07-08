@@ -1,5 +1,13 @@
 # Release Notes
 
+## 0.1.5
+
+This release restores the previous app icon and moves the detective concept into README/docs only.
+
+- 🎨 Restores the previous MoreDock app icon.
+- 🕵️ Adds a detective Rive-ready README element and docs canvas.
+- 🧊 Keeps the app branding focused on the Dock itself.
+
 ## 0.1.4
 
 This release fixes several Dock behavior issues and cleans up the project presentation.

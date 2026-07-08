@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MoreDock Detective Rive Element</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      background: #0b0f14;
+      color: #edf4f7;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at 50% 44%, rgba(93, 183, 209, 0.24), transparent 32rem),
+        linear-gradient(135deg, #111820, #1f2a30 55%, #0b0f14);
+    }
+
+    main {
+      width: min(980px, calc(100vw - 40px));
+      display: grid;
+      gap: 18px;
+    }
+
+    canvas {
+      width: 100%;
+      aspect-ratio: 12 / 4.2;
+      border-radius: 28px;
+      background: rgba(255, 255, 255, 0.04);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+    }
+
+    p {
+      margin: 0;
+      color: rgba(237, 244, 247, 0.72);
+      font-size: 14px;
+      line-height: 1.5;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <canvas id="detective" width="1200" height="420" aria-label="Detective Dock Watch animation"></canvas>
+    <p>
+      Rive runtime slot for the README detective element. Replace the fallback drawing with
+      <code>detective-dock.riv</code> when a native Rive source file is exported.
+    </p>
+  </main>
+
+  <script src="https://unpkg.com/@rive-app/canvas@2.38.5/rive.js"></script>
+  <script>
+    const canvas = document.getElementById("detective");
+    const context = canvas.getContext("2d");
+
+    function drawFallback(time) {
+      const width = canvas.width;
+      const height = canvas.height;
+      const pulse = Math.sin(time / 650) * 8;
+
+      context.clearRect(0, 0, width, height);
+      const gradient = context.createLinearGradient(0, 0, width, height);
+      gradient.addColorStop(0, "#111820");
+      gradient.addColorStop(0.55, "#1f2a30");
+      gradient.addColorStop(1, "#0b0f14");
+      context.fillStyle = gradient;
+      roundRect(0, 0, width, height, 28);
+      context.fill();
+
+      context.fillStyle = "rgba(93, 183, 209, 0.14)";
+      context.beginPath();
+      context.ellipse(width / 2, 236, 330 + pulse, 118 + pulse / 2, 0, 0, Math.PI * 2);
+      context.fill();
+
+      roundRect(318, 286, 564, 82, 41);
+      context.fillStyle = "rgba(233, 238, 242, 0.88)";
+      context.fill();
+
+      ["#4f8ff7", "#5dd07e", "#ffc34d", "#f96c5b", "#8d7cf6"].forEach((color, index) => {
+        roundRect(378 + index * 88, 306, 48, 48, 13);
+        context.fillStyle = color;
+        context.fill();
+      });
+
+      context.save();
+      context.translate(600, 176 + pulse / 2);
+      context.fillStyle = "rgba(223, 244, 250, 0.96)";
+      circle(0, 0, 96);
+      context.fill();
+      context.fillStyle = "rgba(169, 216, 230, 0.75)";
+      circle(0, 0, 70);
+      context.fill();
+      context.lineWidth = 8;
+      context.strokeStyle = "#365a66";
+      context.stroke();
+      roundRect(-86, -86, 172, 42, 21);
+      context.fillStyle = "#202832";
+      context.fill();
+      roundRect(-48, -154, 96, 82, 22);
+      context.fill();
+      context.strokeStyle = "#edf4f7";
+      context.lineWidth = 8;
+      context.beginPath();
+      context.moveTo(-34, -98);
+      context.lineTo(34, -98);
+      context.stroke();
+      context.rotate(-Math.PI / 4.3);
+      roundRect(64, 94, 82, 176, 36);
+      context.fillStyle = "#edf4f7";
+      context.fill();
+      context.strokeStyle = "#404a55";
+      context.lineWidth = 8;
+      context.stroke();
+      context.restore();
+
+      context.strokeStyle = "#ffc44e";
+      context.lineWidth = 8;
+      context.lineCap = "round";
+      context.beginPath();
+      context.moveTo(835, 84);
+      context.lineTo(835, 152);
+      context.moveTo(801, 118);
+      context.lineTo(869, 118);
+      context.stroke();
+      context.fillStyle = "#ffc44e";
+      circle(835, 118, 13);
+      context.fill();
+
+      context.fillStyle = "#edf4f7";
+      context.font = "700 34px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+      context.textAlign = "center";
+      context.fillText("Detective Dock Watch", 600, 72);
+      context.fillStyle = "#aeb8bf";
+      context.font = "18px -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif";
+      context.fillText("A Rive-ready element for the MoreDock README", 600, 110);
+
+      requestAnimationFrame(drawFallback);
+    }
+
+    function roundRect(x, y, width, height, radius) {
+      context.beginPath();
+      context.moveTo(x + radius, y);
+      context.arcTo(x + width, y, x + width, y + height, radius);
+      context.arcTo(x + width, y + height, x, y + height, radius);
+      context.arcTo(x, y + height, x, y, radius);
+      context.arcTo(x, y, x + width, y, radius);
+      context.closePath();
+    }
+
+    function circle(x, y, radius) {
+      context.beginPath();
+      context.arc(x, y, radius, 0, Math.PI * 2);
+    }
+
+    requestAnimationFrame(drawFallback);
+  </script>
+</body>
+</html>

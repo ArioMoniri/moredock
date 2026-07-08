@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PRODUCT_NAME="MoreDock"
-VERSION="${VERSION:-0.1.4}"
+VERSION="${VERSION:-0.1.5}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
@@ -91,8 +91,8 @@ if [[ -n "${SPARKLE_PRIVATE_KEY:-}" ]]; then
 # MoreDock ${VERSION}
 
 - Native multi-display dock panels.
-- Mirrors pinned Dock apps, running apps, folders, and stacks.
-- Fits all Dock items on each display without scrolling.
+- Restores the previous MoreDock app icon.
+- Adds a detective Rive-ready README element.
 - Sparkle-powered app updates.
 NOTES
 
