@@ -1,5 +1,15 @@
 # Release Notes
 
+## 0.1.6
+
+This release focuses on the unresolved native-Dock matching and settings issues.
+
+- 🎛️ Adds editable macOS Dock settings for location, size, zoom, magnification, and auto-hide.
+- 🖥️ Strengthens native Dock display exclusion, especially when the real Dock is auto-hidden.
+- 🧭 Adds display-junction avoidance so side docks do not sit on borders shared with another display by default.
+- 📁 Re-syncs Dock persistent apps/folders after `com.apple.dock` preference synchronization.
+- 🔐 Stops repeated Accessibility prompts during clicked-display moves and adds a Settings permission button.
+
 ## 0.1.5
 
 This release restores the previous app icon and moves the detective concept into README/docs only.

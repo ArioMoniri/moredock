@@ -149,6 +149,7 @@ struct SnapshotSettings: Equatable {
     var autoHideDelay = 0.05
     var autoHideDuration = 0.20
     var respectMenuBarSafeArea = true
+    var avoidDisplayJunctions = true
     var followsSystemDock = true
     var activationDisplayMode: ActivationDisplayMode = .native
     var cornerRadius: Double {
@@ -174,6 +175,7 @@ struct SnapshotSettings: Equatable {
         autoHideDelay = settings.autoHideDelay
         autoHideDuration = settings.autoHideDuration
         respectMenuBarSafeArea = settings.respectMenuBarSafeArea
+        avoidDisplayJunctions = settings.avoidDisplayJunctions
         followsSystemDock = settings.followsSystemDock
         activationDisplayMode = settings.activationDisplayMode
     }
@@ -277,7 +279,7 @@ private struct DockIconButton: View {
         let moveAfterActivation: @Sendable (pid_t) -> Void = { processIdentifier in
             guard shouldMoveToClickedDisplay else { return }
             DispatchQueue.main.async {
-                guard AccessibilityWindowMover.isTrusted(prompt: true) else { return }
+                guard AccessibilityWindowMover.isTrusted(prompt: false) else { return }
                 for attempt in 1...6 {
                     DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.18) {
                         AccessibilityWindowMover.moveWindows(for: processIdentifier, to: clickedDisplayFrame)

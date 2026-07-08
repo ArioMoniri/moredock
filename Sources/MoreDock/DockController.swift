@@ -139,12 +139,49 @@ final class DockController {
             guard let number = screen.screenNumber else { continue }
             let panel = panels[number] ?? DockPanelController(screenNumber: number)
             panels[number] = panel
+            let panelSettings = effectiveSettings(runtimeSettings, for: screen, allScreens: NSScreen.screens)
             panel.update(
                 screen: screen,
                 apps: dockItems,
-                settings: runtimeSettings,
+                settings: panelSettings,
                 now: Date()
             )
+        }
+    }
+
+    private func effectiveSettings(_ settings: DockRuntimeSettings, for screen: NSScreen, allScreens: [NSScreen]) -> DockRuntimeSettings {
+        guard settings.avoidDisplayJunctions else { return settings }
+        guard isEdgeShared(settings.edge, of: screen, with: allScreens) else { return settings }
+
+        var adjusted = settings
+        switch settings.edge {
+        case .left:
+            adjusted.edge = isEdgeShared(.right, of: screen, with: allScreens) ? .bottom : .right
+        case .right:
+            adjusted.edge = isEdgeShared(.left, of: screen, with: allScreens) ? .bottom : .left
+        case .bottom:
+            adjusted.edge = .bottom
+        }
+        return adjusted
+    }
+
+    private func isEdgeShared(_ edge: DockEdge, of screen: NSScreen, with screens: [NSScreen]) -> Bool {
+        let tolerance: CGFloat = 2
+        let frame = screen.frame
+        return screens.contains { other in
+            guard other != screen else { return false }
+            let otherFrame = other.frame
+            let verticalOverlap = frame.minY < otherFrame.maxY - tolerance && frame.maxY > otherFrame.minY + tolerance
+            let horizontalOverlap = frame.minX < otherFrame.maxX - tolerance && frame.maxX > otherFrame.minX + tolerance
+
+            switch edge {
+            case .left:
+                return verticalOverlap && abs(frame.minX - otherFrame.maxX) <= tolerance
+            case .right:
+                return verticalOverlap && abs(frame.maxX - otherFrame.minX) <= tolerance
+            case .bottom:
+                return horizontalOverlap && abs(frame.minY - otherFrame.maxY) <= tolerance
+            }
         }
     }
 

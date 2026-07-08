@@ -47,12 +47,12 @@ private func renderAll() throws {
             endPoint: .bottom
         )
         SettingsView(settings: settings, onCheckForUpdates: {})
-            .frame(width: 700, height: 500)
+            .frame(width: 880, height: 760)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .shadow(color: .black.opacity(0.35), radius: 24, y: 14)
     }
 
-    try render(settingsBackdrop, size: CGSize(width: 1200, height: 675), path: "\(output)/moredock-settings.png")
+    try render(settingsBackdrop, size: CGSize(width: 1200, height: 900), path: "\(output)/moredock-settings.png")
 }
 
 @main

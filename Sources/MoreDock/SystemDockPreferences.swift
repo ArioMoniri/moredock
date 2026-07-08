@@ -12,6 +12,7 @@ struct DockRuntimeSettings: Equatable {
     var autoHideDelay: Double
     var autoHideDuration: Double
     var respectMenuBarSafeArea: Bool
+    var avoidDisplayJunctions: Bool
     var followsSystemDock: Bool
     var activationDisplayMode: ActivationDisplayMode
 
@@ -27,17 +28,23 @@ struct DockRuntimeSettings: Equatable {
         autoHideDelay = 0.05
         autoHideDuration = 0.20
         respectMenuBarSafeArea = settings.respectMenuBarSafeArea
+        avoidDisplayJunctions = settings.avoidDisplayJunctions
         followsSystemDock = settings.followSystemDock
         activationDisplayMode = settings.activationDisplayMode
     }
 }
 
 enum SystemDockPreferences {
+    static func synchronize() {
+        CFPreferencesAppSynchronize("com.apple.dock" as CFString)
+    }
+
     @MainActor
     static func runtimeSettings(fallback settings: SettingsStore) -> DockRuntimeSettings {
         var runtime = DockRuntimeSettings(settings: settings)
         guard settings.followSystemDock else { return runtime }
 
+        synchronize()
         runtime.edge = edge(from: string("orientation")) ?? runtime.edge
         runtime.iconSize = clamped(double("tilesize"), defaultValue: runtime.iconSize, range: 24...96)
         runtime.magnification = bool("magnification") ?? runtime.magnification
@@ -61,6 +68,10 @@ enum SystemDockPreferences {
     }
 
     static func nativeDockScreen(for screens: [NSScreen], edge: DockEdge) -> NSScreen? {
+        if let dockWindowScreen = visibleDockWindowScreen(for: screens) {
+            return dockWindowScreen
+        }
+
         let reservedScreens = screens.filter { screen in
             switch edge {
             case .bottom:
@@ -72,11 +83,48 @@ enum SystemDockPreferences {
             }
         }
 
-        return reservedScreens.first ?? NSScreen.main
+        return reservedScreens.first ?? screens.first ?? NSScreen.main
     }
 
     static func persistentDockItems() -> [DockAppItem] {
-        persistentItems(for: "persistent-apps") + persistentItems(for: "persistent-others")
+        synchronize()
+        return persistentItems(for: "persistent-apps") + persistentItems(for: "persistent-others")
+    }
+
+    static var nativeEdge: DockEdge {
+        synchronize()
+        return edge(from: string("orientation")) ?? .bottom
+    }
+
+    static var nativeIconSize: Double {
+        synchronize()
+        return clamped(double("tilesize"), defaultValue: 48, range: 24...96)
+    }
+
+    static var nativeMagnifiedIconSize: Double {
+        synchronize()
+        let iconSize = nativeIconSize
+        return clamped(double("largesize"), defaultValue: max(iconSize + 12, iconSize * 1.25), range: iconSize...128)
+    }
+
+    static var nativeMagnification: Bool {
+        synchronize()
+        return bool("magnification") ?? true
+    }
+
+    static var nativeAutoHide: Bool {
+        synchronize()
+        return bool("autohide") ?? false
+    }
+
+    static func applyNativeDockSettings(edge: DockEdge, iconSize: Double, magnifiedIconSize: Double, magnification: Bool, autoHide: Bool) {
+        set(edge.rawValue as NSString, for: "orientation")
+        set(NSNumber(value: iconSize), for: "tilesize")
+        set(NSNumber(value: max(iconSize, magnifiedIconSize)), for: "largesize")
+        set(NSNumber(value: magnification), for: "magnification")
+        set(NSNumber(value: autoHide), for: "autohide")
+        CFPreferencesAppSynchronize("com.apple.dock" as CFString)
+        relaunchDock()
     }
 
     private static func edge(from orientation: String?) -> DockEdge? {
@@ -95,6 +143,10 @@ enum SystemDockPreferences {
 
     private static func value(_ key: String) -> Any? {
         CFPreferencesCopyAppValue(key as CFString, "com.apple.dock" as CFString)
+    }
+
+    private static func set(_ value: Any, for key: String) {
+        CFPreferencesSetAppValue(key as CFString, value as CFPropertyList, "com.apple.dock" as CFString)
     }
 
     private static func string(_ key: String) -> String? {
@@ -160,5 +212,49 @@ enum SystemDockPreferences {
     private static func runningProcessIdentifier(for bundleIdentifier: String?) -> pid_t? {
         guard let bundleIdentifier else { return nil }
         return NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier
+    }
+
+    private static func visibleDockWindowScreen(for screens: [NSScreen]) -> NSScreen? {
+        guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
+            return nil
+        }
+
+        let dockWindows = windows.filter { window in
+            (window[kCGWindowOwnerName as String] as? String) == "Dock"
+        }
+
+        for window in dockWindows {
+            guard let boundsDictionary = window[kCGWindowBounds as String] as? [String: Any],
+                  let x = boundsDictionary["X"] as? CGFloat,
+                  let y = boundsDictionary["Y"] as? CGFloat,
+                  let width = boundsDictionary["Width"] as? CGFloat,
+                  let height = boundsDictionary["Height"] as? CGFloat,
+                  width > 40,
+                  height > 40 else {
+                continue
+            }
+
+            let bounds = NSRect(x: x, y: y, width: width, height: height)
+            if let screen = screens.max(by: { $0.frame.intersection(bounds).area < $1.frame.intersection(bounds).area }),
+               screen.frame.intersects(bounds) {
+                return screen
+            }
+        }
+
+        return nil
+    }
+
+    private static func relaunchDock() {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/killall")
+        task.arguments = ["Dock"]
+        try? task.run()
+    }
+}
+
+private extension NSRect {
+    var area: CGFloat {
+        guard !isNull, !isEmpty else { return 0 }
+        return width * height
     }
 }

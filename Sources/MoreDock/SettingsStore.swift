@@ -67,6 +67,10 @@ final class SettingsStore: ObservableObject {
         didSet { save(respectMenuBarSafeArea, for: Keys.respectMenuBarSafeArea) }
     }
 
+    @Published var avoidDisplayJunctions: Bool {
+        didSet { save(avoidDisplayJunctions, for: Keys.avoidDisplayJunctions) }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         isEnabled = defaults.object(forKey: Keys.isEnabled) as? Bool ?? true
@@ -81,6 +85,7 @@ final class SettingsStore: ObservableObject {
         liquidGlass = defaults.object(forKey: Keys.liquidGlass) as? Bool ?? true
         autoHide = defaults.object(forKey: Keys.autoHide) as? Bool ?? false
         respectMenuBarSafeArea = defaults.object(forKey: Keys.respectMenuBarSafeArea) as? Bool ?? true
+        avoidDisplayJunctions = defaults.object(forKey: Keys.avoidDisplayJunctions) as? Bool ?? true
     }
 
     private let defaults: UserDefaults
@@ -102,5 +107,6 @@ final class SettingsStore: ObservableObject {
         static let liquidGlass = "liquidGlass"
         static let autoHide = "autoHide"
         static let respectMenuBarSafeArea = "respectMenuBarSafeArea"
+        static let avoidDisplayJunctions = "avoidDisplayJunctions"
     }
 }

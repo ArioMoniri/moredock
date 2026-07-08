@@ -24,14 +24,15 @@ It follows your real Dock settings, stays out of the main Dock’s way, and runs
 
 ## Current Release 🚀
 
-Latest release: [MoreDock 0.1.4](https://github.com/ArioMoniri/moredock/releases/latest)
+Latest release: [MoreDock 0.1.6](https://github.com/ArioMoniri/moredock/releases/latest)
 
 Highlights:
 
 - 📁 Dock folders and persistent Dock apps are included.
 - 📏 Dock items shrink to fit the available display edge instead of scrolling.
 - ✨ Hidden auto-hide panels are fully transparent and moved outside the screen edge.
-- 🧊 Settings use a cleaner native glass layout.
+- 🎛️ macOS Dock location, size, zoom, magnification, and auto-hide can be edited from MoreDock.
+- 🧭 Display-junction avoidance keeps side docks off shared monitor borders by default.
 - 🔄 Update checks are available from the menu bar and Settings.
 
 ## Install 📦
@@ -68,6 +69,8 @@ When **Follow native Dock** is enabled, MoreDock reads Dock preferences from `co
 - `persistent-others`
 
 Those values refresh while the app is running, so changes made in System Settings are picked up automatically.
+
+MoreDock Settings can also write the native Dock location, size, zoom size, magnification, and auto-hide values back to macOS. Applying those changes restarts the system Dock, which is required for macOS to reload Dock preference changes.
 
 ## Window Placement 🪟
 
