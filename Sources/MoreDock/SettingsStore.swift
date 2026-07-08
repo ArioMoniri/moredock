@@ -31,6 +31,10 @@ final class SettingsStore: ObservableObject {
         didSet { save(followSystemDock, for: Keys.followSystemDock) }
     }
 
+    @Published var hideOnNativeDockScreen: Bool {
+        didSet { save(hideOnNativeDockScreen, for: Keys.hideOnNativeDockScreen) }
+    }
+
     @Published var activationDisplayMode: ActivationDisplayMode {
         didSet { save(activationDisplayMode.rawValue, for: Keys.activationDisplayMode) }
     }
@@ -68,6 +72,7 @@ final class SettingsStore: ObservableObject {
         isEnabled = defaults.object(forKey: Keys.isEnabled) as? Bool ?? true
         showOnAllDisplays = defaults.object(forKey: Keys.showOnAllDisplays) as? Bool ?? true
         followSystemDock = defaults.object(forKey: Keys.followSystemDock) as? Bool ?? true
+        hideOnNativeDockScreen = defaults.object(forKey: Keys.hideOnNativeDockScreen) as? Bool ?? true
         activationDisplayMode = ActivationDisplayMode(rawValue: defaults.string(forKey: Keys.activationDisplayMode) ?? "") ?? .native
         edge = DockEdge(rawValue: defaults.string(forKey: Keys.edge) ?? "") ?? .bottom
         iconSize = defaults.object(forKey: Keys.iconSize) as? Double ?? 48
@@ -88,6 +93,7 @@ final class SettingsStore: ObservableObject {
         static let isEnabled = "isEnabled"
         static let showOnAllDisplays = "showOnAllDisplays"
         static let followSystemDock = "followSystemDock"
+        static let hideOnNativeDockScreen = "hideOnNativeDockScreen"
         static let activationDisplayMode = "activationDisplayMode"
         static let edge = "edge"
         static let iconSize = "iconSize"

@@ -99,7 +99,14 @@ final class DockController {
             return
         }
 
-        let targetScreens = settings.showOnAllDisplays ? NSScreen.screens : [NSScreen.main].compactMap { $0 }
+        let runtimeSettings = SystemDockPreferences.runtimeSettings(fallback: settings)
+        var targetScreens = settings.showOnAllDisplays ? NSScreen.screens : [NSScreen.main].compactMap { $0 }
+        if settings.followSystemDock, settings.hideOnNativeDockScreen,
+           let nativeDockScreenNumber = SystemDockPreferences
+            .nativeDockScreen(for: NSScreen.screens, edge: runtimeSettings.edge)?
+            .screenNumber {
+            targetScreens.removeAll { $0.screenNumber == nativeDockScreenNumber }
+        }
         let targetNumbers = Set(targetScreens.compactMap(\.screenNumber))
 
         for (number, panel) in panels where !targetNumbers.contains(number) {
@@ -114,7 +121,7 @@ final class DockController {
             panel.update(
                 screen: screen,
                 apps: appItems,
-                settings: SystemDockPreferences.runtimeSettings(fallback: settings),
+                settings: runtimeSettings,
                 now: Date()
             )
         }

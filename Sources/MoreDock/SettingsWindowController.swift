@@ -37,13 +37,14 @@ struct SettingsView: View {
                 header
 
                 GroupBox {
-                    VStack(spacing: 14) {
-                        Toggle("Enable MoreDock", isOn: $settings.isEnabled)
-                        Toggle("Show on all screens", isOn: $settings.showOnAllDisplays)
-                        Toggle("Follow native Dock", isOn: $settings.followSystemDock)
-                        Toggle("Respect menu bar safe area", isOn: $settings.respectMenuBarSafeArea)
+                    VStack(spacing: 12) {
+                        SettingsToggleRow("Enable MoreDock", isOn: $settings.isEnabled)
+                        SettingsToggleRow("Show on all screens", isOn: $settings.showOnAllDisplays)
+                        SettingsToggleRow("Follow native Dock", isOn: $settings.followSystemDock)
+                        SettingsToggleRow("Hide where native Dock lives", isOn: $settings.hideOnNativeDockScreen)
+                            .disabled(!settings.followSystemDock)
+                        SettingsToggleRow("Respect menu bar safe area", isOn: $settings.respectMenuBarSafeArea)
                     }
-                    .toggleStyle(.switch)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -89,13 +90,12 @@ struct SettingsView: View {
 
                 GroupBox {
                     VStack(spacing: 14) {
-                        Toggle("Liquid glass material", isOn: $settings.liquidGlass)
-                        Toggle("Icon magnification", isOn: $settings.magnification)
+                        SettingsToggleRow("Liquid glass material", isOn: $settings.liquidGlass)
+                        SettingsToggleRow("Icon magnification", isOn: $settings.magnification)
                             .disabled(settings.followSystemDock)
-                        Toggle("Auto-hide", isOn: $settings.autoHide)
+                        SettingsToggleRow("Auto-hide", isOn: $settings.autoHide)
                             .disabled(settings.followSystemDock)
                     }
-                    .toggleStyle(.switch)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
@@ -121,6 +121,28 @@ struct SettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+private struct SettingsToggleRow: View {
+    let title: String
+    @Binding var isOn: Bool
+
+    init(_ title: String, isOn: Binding<Bool>) {
+        self.title = title
+        _isOn = isOn
+    }
+
+    var body: some View {
+        HStack {
+            Text(title)
+                .font(.body.weight(.medium))
+            Spacer()
+            Toggle(title, isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
+        .frame(minHeight: 28)
     }
 }
 

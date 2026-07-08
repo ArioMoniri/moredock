@@ -22,7 +22,7 @@ final class DockPanelController {
         panel.hidesOnDeactivate = false
         panel.isOpaque = false
         panel.backgroundColor = .clear
-        panel.hasShadow = true
+        panel.hasShadow = false
         panel.ignoresMouseEvents = false
 
         hostingView = NSHostingView(rootView: DockPanelView(apps: [], settings: SnapshotSettings(), targetVisibleFrame: .zero))
@@ -62,8 +62,8 @@ final class DockPanelController {
     ) -> NSRect {
         let visible = settings.respectMenuBarSafeArea && !settings.followsSystemDock ? screen.visibleFrame : screen.frame
         let itemCount = max(apps.count, 1)
-        let gap: CGFloat = max(6, CGFloat(settings.iconSize) * 0.16)
-        let padding: CGFloat = max(8, CGFloat(settings.iconSize) * 0.22)
+        let gap: CGFloat = max(7, CGFloat(settings.iconSize) * 0.14)
+        let padding: CGFloat = max(9, CGFloat(settings.iconSize) * 0.24)
         let icon = CGFloat(settings.iconSize)
         let thickness = icon + padding * 2
         let length = min(CGFloat(itemCount) * (icon + gap) - gap + padding * 2, max(240, visible.width - 48))
@@ -156,6 +156,10 @@ struct SnapshotSettings: Equatable {
     var respectMenuBarSafeArea = true
     var followsSystemDock = true
     var activationDisplayMode: ActivationDisplayMode = .native
+    var cornerRadius: Double {
+        let thickness = iconSize + max(9, iconSize * 0.24) * 2
+        return thickness / 2
+    }
 
     init() {}
 
@@ -197,10 +201,10 @@ struct DockPanelView: View {
                     .padding(12)
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: settings.cornerRadius, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 22, style: .continuous)
-                    .strokeBorder(.white.opacity(settings.liquidGlass ? 0.28 : 0.14), lineWidth: 1)
+                RoundedRectangle(cornerRadius: settings.cornerRadius, style: .continuous)
+                    .strokeBorder(.white.opacity(settings.liquidGlass ? 0.34 : 0.16), lineWidth: 1)
             }
             .opacity(settings.opacity)
     }
@@ -255,8 +259,10 @@ private struct DockIconButton: View {
             }
 
             if settings.activationDisplayMode == .clickedDisplay, !targetVisibleFrame.isEmpty {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-                    AccessibilityWindowMover.moveWindows(for: item.processIdentifier, to: targetVisibleFrame)
+                for attempt in 1...6 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.18) {
+                        AccessibilityWindowMover.moveWindows(for: item.processIdentifier, to: targetVisibleFrame)
+                    }
                 }
             }
         }
@@ -270,11 +276,11 @@ private struct DockVisualEffect: NSViewRepresentable {
         let view = NSVisualEffectView()
         view.blendingMode = .behindWindow
         view.state = .active
-        view.material = liquidGlass ? .hudWindow : .underWindowBackground
+        view.material = liquidGlass ? .popover : .hudWindow
         return view
     }
 
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
-        nsView.material = liquidGlass ? .hudWindow : .underWindowBackground
+        nsView.material = liquidGlass ? .popover : .hudWindow
     }
 }

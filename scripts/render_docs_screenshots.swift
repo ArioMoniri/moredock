@@ -23,23 +23,25 @@ private func render<V: View>(_ view: V, size: CGSize, path: String) throws {
 @MainActor
 private func sampleApps() -> [DockAppItem] {
     let assetIcon = NSImage(contentsOfFile: "Resources/AppIcon.png")
-    let symbols = [
-        "display.2": "MoreDock",
-        "safari": "Safari",
-        "terminal": "Terminal",
-        "swift": "Xcode",
-        "music.note": "Music",
-        "message": "Messages",
-        "folder": "Finder"
+    let bundleIdentifiers = [
+        "com.apple.finder": "Finder",
+        "com.apple.Safari": "Safari",
+        "com.apple.Terminal": "Terminal",
+        "com.google.Chrome": "Chrome",
+        "com.microsoft.VSCode": "Visual Studio Code",
+        "com.microsoft.Word": "Word",
+        "com.microsoft.Excel": "Excel"
     ]
 
-    return symbols.enumerated().map { index, item in
+    return bundleIdentifiers.enumerated().map { index, item in
         let image: NSImage
         if index == 0, let assetIcon {
             image = assetIcon
         } else {
-            image = NSImage(systemSymbolName: item.key, accessibilityDescription: item.value) ?? NSImage()
-            image.isTemplate = false
+            image = NSWorkspace.shared.urlForApplication(withBundleIdentifier: item.key)
+                .map { NSWorkspace.shared.icon(forFile: $0.path) }
+                ?? NSImage(systemSymbolName: "app", accessibilityDescription: item.value)
+                ?? NSImage()
         }
         return DockAppItem(
             id: item.value.lowercased(),
@@ -60,6 +62,7 @@ private func renderAll() throws {
     let settings = SettingsStore(defaults: defaults)
     settings.isEnabled = true
     settings.showOnAllDisplays = true
+    settings.followSystemDock = false
     settings.edge = .bottom
     settings.iconSize = 54
     settings.opacity = 0.92

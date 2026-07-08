@@ -1,27 +1,27 @@
 # MoreDock 🧊
 
-MoreDock is a native macOS menu-bar app that puts a Dock-style launcher on every display.
+MoreDock is a native macOS menu-bar app that adds a Dock-style launcher to every display that does not already have the system Dock.
 
-It follows your real Dock settings by default: location, icon size, magnification, auto-hide, reveal delay, and reveal animation timing. It also runs as an accessory app, so MoreDock itself does not show up as an extra icon in the macOS Dock.
+The goal is simple: keep Apple’s Dock behavior where it already works, and add the missing Dock surface on the rest of your screens.
 
 ![MoreDock dock preview](docs/images/moredock-dock.png)
 
 ![MoreDock settings](docs/images/moredock-settings.png)
 
-## What It Does ✨
+## Features ✨
 
-- Shows a lightweight Dock panel on every connected screen.
-- Mirrors the native Dock settings from `com.apple.dock`.
-- Updates while running when the native Dock location, size, or auto-hide settings change.
-- Tracks running regular macOS apps and activates them from any display.
-- Can either use normal macOS app activation or move windows to the display whose MoreDock panel was clicked.
-- Uses a native SwiftUI/AppKit settings window with glassy macOS materials.
-- Includes Sparkle updates with a **Check for Updates...** menu item.
-- Runs with `LSUIElement`, so there is no extra Dock icon.
+- 🖥️ Shows a Dock-style panel on secondary displays.
+- 🍎 Hides itself on the screen where the native macOS Dock lives.
+- 📐 Follows native Dock settings for edge, tile size, magnification, auto-hide delay, and reveal timing.
+- 🔄 Updates while running when `com.apple.dock` preferences change.
+- 🧊 Uses a rounded glass pill shape derived from the native Dock tile size.
+- 🪟 Can open apps using normal macOS behavior or move app windows to the display whose MoreDock icon was clicked.
+- 🔕 Runs as a menu-bar/accessory app, so there is no extra Dock icon.
+- 🔄 Includes Sparkle auto-updates and a **Check for Updates...** menu item.
 
-## Native Dock Sync 🖥️
+## How It Works 🧭
 
-When **Follow native Dock** is on, MoreDock reads:
+When **Follow native Dock** is enabled, MoreDock reads the same Dock preference keys macOS stores in `com.apple.dock`:
 
 - `orientation`
 - `tilesize`
@@ -31,18 +31,55 @@ When **Follow native Dock** is on, MoreDock reads:
 - `autohide-delay`
 - `autohide-time-modifier`
 
-That keeps MoreDock aligned with the Dock you already configured in macOS.
+The app refreshes those values while running, so changes made in System Settings or with `defaults write com.apple.dock ...` are picked up without restarting MoreDock.
 
-## Opening Apps On Displays 🪟
+By default, **Hide where native Dock lives** is enabled. This prevents MoreDock from drawing on the main/native Dock screen, which avoids duplicate Dock surfaces.
+
+## Window Placement 🪟
 
 The **Open apps on** setting has two modes:
 
-- **macOS**: let the system decide, exactly like a normal Dock click.
+- **macOS**: activate apps exactly like a normal Dock click.
 - **Clicked Display**: activate the app, then move its windows to the display where you clicked the MoreDock icon.
 
-Clicked Display uses the macOS Accessibility API. macOS may ask for Accessibility permission the first time this mode moves a window.
+Clicked Display uses macOS Accessibility APIs. macOS may ask you to grant MoreDock Accessibility permission before it can move windows.
 
-## Build 🛠️
+## Install 📦
+
+Download the latest release:
+
+[Download MoreDock](https://github.com/ArioMoniri/moredock/releases/latest)
+
+Or install with Homebrew:
+
+```sh
+brew tap ArioMoniri/moredock https://github.com/ArioMoniri/moredock
+brew install --cask moredock
+```
+
+## Checksums ✅
+
+Each release includes `SHA256SUMS.txt` next to the `.dmg`, `.zip`, and Sparkle `appcast.xml`.
+
+Verify a downloaded release:
+
+```sh
+shasum -a 256 -c SHA256SUMS.txt
+```
+
+## Release Notes 📝
+
+See [CHANGELOG.md](CHANGELOG.md).
+
+Latest highlights:
+
+- 🖥️ MoreDock now hides on the native Dock screen by default.
+- 📐 Dock sizing and pill shape are derived from native Dock settings.
+- ✨ Panel shadows were removed to avoid display-junction bleed.
+- 🪟 Clicked-display window placement has been improved.
+- 🖼️ README images now use real app screenshots.
+
+## Build From Source 🛠️
 
 ```sh
 ./scripts/build_app.sh
@@ -54,63 +91,8 @@ The app bundle is written to:
 .build/MoreDock.app
 ```
 
-## Package 📦
+Package locally:
 
 ```sh
 ./scripts/package_release.sh
-```
-
-This creates:
-
-```text
-dist/MoreDock-0.1.0-macOS.zip
-dist/MoreDock-0.1.0-macOS.dmg
-dist/SHA256SUMS.txt
-```
-
-If `SPARKLE_PRIVATE_KEY` is set, packaging also creates:
-
-```text
-dist/appcast.xml
-```
-
-Local builds are ad-hoc signed unless `CODESIGN_IDENTITY` is set.
-
-## GitHub Release Signing 🔐
-
-Tagged releases are signed, notarized, and published from GitHub Actions with these secrets:
-
-- `APPLE_CERTIFICATE`: base64 `.p12` export of the Developer ID Application certificate and private key.
-- `APPLE_CERTIFICATE_PASSWORD`: password for the `.p12`.
-- `APPLE_SIGNING_IDENTITY`: exact identity, for example `Developer ID Application: Your Name (TEAMID)`.
-- `APPLE_ID`: Apple ID email for notarization.
-- `APPLE_TEAM_ID`: Apple Developer Team ID.
-- `APPLE_PASSWORD`: app-specific password for `notarytool`.
-- `SPARKLE_PRIVATE_KEY`: Sparkle EdDSA private key used to sign `appcast.xml`.
-
-`TAURI_SIGNING_PRIVATE_KEY` is not used here; MoreDock is Swift/AppKit, not Tauri.
-
-Publish a release:
-
-```sh
-git tag v0.1.0
-git push origin v0.1.0
-```
-
-## Screenshots 🖼️
-
-The README screenshots are rendered from the real SwiftUI/AppKit views:
-
-```sh
-xcrun swiftc -parse-as-library \
-  Sources/MoreDock/AccessibilityWindowMover.swift \
-  Sources/MoreDock/SettingsStore.swift \
-  Sources/MoreDock/SystemDockPreferences.swift \
-  Sources/MoreDock/DockController.swift \
-  Sources/MoreDock/DockPanelController.swift \
-  Sources/MoreDock/SettingsWindowController.swift \
-  scripts/render_docs_screenshots.swift \
-  -o .build/render_docs_screenshots
-
-.build/render_docs_screenshots docs/images
 ```

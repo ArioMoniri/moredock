@@ -26,7 +26,7 @@ enum AccessibilityWindowMover {
             return
         }
 
-        for window in windows.prefix(4) {
+        for window in windows.prefix(6) {
             move(window: window, to: visibleFrame)
         }
     }
@@ -37,6 +37,13 @@ enum AccessibilityWindowMover {
     }
 
     private static func move(window: AXUIElement, to visibleFrame: NSRect) {
+        var minimizedValue: CFTypeRef?
+        if AXUIElementCopyAttributeValue(window, kAXMinimizedAttribute as CFString, &minimizedValue) == .success,
+           let isMinimized = minimizedValue as? Bool,
+           isMinimized {
+            AXUIElementSetAttributeValue(window, kAXMinimizedAttribute as CFString, kCFBooleanFalse)
+        }
+
         var sizeValue: CFTypeRef?
         var currentSize = CGSize(width: min(1100, visibleFrame.width * 0.82), height: min(760, visibleFrame.height * 0.82))
 
@@ -67,5 +74,6 @@ enum AccessibilityWindowMover {
 
         AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeAX)
         AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionAX)
+        AXUIElementPerformAction(window, kAXRaiseAction as CFString)
     }
 }
