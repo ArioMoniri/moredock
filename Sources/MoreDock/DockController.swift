@@ -5,11 +5,20 @@ import SwiftUI
 typealias DisplayID = NSNumber
 
 struct DockAppItem: Identifiable, Equatable {
+    enum Kind: Equatable {
+        case application
+        case folder
+        case file
+    }
+
     let id: String
     let name: String
     let bundleIdentifier: String?
+    let url: URL?
     let icon: NSImage
-    let processIdentifier: pid_t
+    let processIdentifier: pid_t?
+    let kind: Kind
+    let isRunning: Bool
 
     static func == (lhs: DockAppItem, rhs: DockAppItem) -> Bool {
         lhs.id == rhs.id
@@ -20,7 +29,7 @@ struct DockAppItem: Identifiable, Equatable {
 final class DockController {
     private let settings: SettingsStore
     private var panels: [DisplayID: DockPanelController] = [:]
-    private var appItems: [DockAppItem] = []
+    private var dockItems: [DockAppItem] = []
     private var cancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
     private var appRefreshCounter = 0
@@ -55,7 +64,7 @@ final class DockController {
     }
 
     func refreshAll() {
-        refreshApps()
+        refreshItems()
         syncPanels()
     }
 
@@ -63,12 +72,12 @@ final class DockController {
         appRefreshCounter += 1
         if appRefreshCounter >= 10 {
             appRefreshCounter = 0
-            refreshApps()
+            refreshItems()
         }
         syncPanels()
     }
 
-    private func refreshApps() {
+    private func refreshItems() {
         let workspace = NSWorkspace.shared
         let running = workspace.runningApplications
             .filter { app in
@@ -78,7 +87,7 @@ final class DockController {
                 (lhs.localizedName ?? "") < (rhs.localizedName ?? "")
             }
 
-        appItems = running.map { app in
+        let runningItems = running.map { app in
             let identifier = app.bundleIdentifier ?? "pid-\(app.processIdentifier)"
             let name = app.localizedName ?? identifier
             let icon = app.icon ?? NSImage(systemSymbolName: "app.dashed", accessibilityDescription: name) ?? NSImage()
@@ -86,10 +95,22 @@ final class DockController {
                 id: identifier,
                 name: name,
                 bundleIdentifier: app.bundleIdentifier,
+                url: app.bundleURL,
                 icon: icon,
-                processIdentifier: app.processIdentifier
+                processIdentifier: app.processIdentifier,
+                kind: .application,
+                isRunning: true
             )
         }
+
+        var seen = Set<String>()
+        var items: [DockAppItem] = []
+        for item in SystemDockPreferences.persistentDockItems() + runningItems {
+            guard !seen.contains(item.id) else { continue }
+            seen.insert(item.id)
+            items.append(item)
+        }
+        dockItems = items
     }
 
     private func syncPanels() {
@@ -120,7 +141,7 @@ final class DockController {
             panels[number] = panel
             panel.update(
                 screen: screen,
-                apps: appItems,
+                apps: dockItems,
                 settings: runtimeSettings,
                 now: Date()
             )

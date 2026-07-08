@@ -21,39 +21,6 @@ private func render<V: View>(_ view: V, size: CGSize, path: String) throws {
 }
 
 @MainActor
-private func sampleApps() -> [DockAppItem] {
-    let assetIcon = NSImage(contentsOfFile: "Resources/AppIcon.png")
-    let bundleIdentifiers = [
-        "com.apple.finder": "Finder",
-        "com.apple.Safari": "Safari",
-        "com.apple.Terminal": "Terminal",
-        "com.google.Chrome": "Chrome",
-        "com.microsoft.VSCode": "Visual Studio Code",
-        "com.microsoft.Word": "Word",
-        "com.microsoft.Excel": "Excel"
-    ]
-
-    return bundleIdentifiers.enumerated().map { index, item in
-        let image: NSImage
-        if index == 0, let assetIcon {
-            image = assetIcon
-        } else {
-            image = NSWorkspace.shared.urlForApplication(withBundleIdentifier: item.key)
-                .map { NSWorkspace.shared.icon(forFile: $0.path) }
-                ?? NSImage(systemSymbolName: "app", accessibilityDescription: item.value)
-                ?? NSImage()
-        }
-        return DockAppItem(
-            id: item.value.lowercased(),
-            name: item.value,
-            bundleIdentifier: nil,
-            icon: image,
-            processIdentifier: pid_t(index + 100)
-        )
-    }
-}
-
-@MainActor
 private func renderAll() throws {
     let output = CommandLine.arguments.dropFirst().first ?? "docs/images"
     try FileManager.default.createDirectory(atPath: output, withIntermediateDirectories: true)
@@ -69,31 +36,6 @@ private func renderAll() throws {
     settings.liquidGlass = true
     settings.magnification = true
     settings.activationDisplayMode = .clickedDisplay
-
-    let snapshot = SnapshotSettings(settings)
-    let dockBackdrop = ZStack {
-        LinearGradient(
-            colors: [
-                Color(red: 0.06, green: 0.07, blue: 0.08),
-                Color(red: 0.10, green: 0.15, blue: 0.18),
-                Color(red: 0.03, green: 0.04, blue: 0.05)
-            ],
-            startPoint: .topLeading,
-            endPoint: .bottomTrailing
-        )
-        VStack {
-            Spacer()
-            DockPanelView(
-                apps: sampleApps(),
-                settings: snapshot,
-                targetVisibleFrame: NSRect(x: 0, y: 0, width: 1200, height: 675)
-            )
-                .frame(width: 560, height: 90)
-                .padding(.bottom, 34)
-        }
-    }
-
-    try render(dockBackdrop, size: CGSize(width: 1200, height: 675), path: "\(output)/moredock-dock.png")
 
     let settingsBackdrop = ZStack {
         LinearGradient(

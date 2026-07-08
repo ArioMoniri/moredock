@@ -1,5 +1,16 @@
 # Release Notes
 
+## 0.1.4
+
+This release fixes several Dock behavior issues and cleans up the project presentation.
+
+- 📁 Mirrors persistent Dock apps plus folders/stacks such as Downloads.
+- 📏 Dynamically fits all Dock items on each display edge without scrolling.
+- ✨ Makes hidden auto-hide panels fully invisible to avoid display-junction bleed.
+- 🔐 Reduces repeated Accessibility prompts during clicked-display window movement.
+- 🖼️ Simplifies the README around the Settings screenshot only.
+- 🕵️ Refreshes the app icon with a simple detective-inspired Dock mark.
+
 ## 0.1.3
 
 This release tightens the settings experience and makes updater access visible from the app itself.

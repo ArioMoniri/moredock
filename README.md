@@ -1,27 +1,55 @@
 # MoreDock 🧊
 
-MoreDock is a native macOS menu-bar app that adds a Dock-style launcher to every display that does not already have the system Dock.
+MoreDock is a native macOS menu-bar app that adds Dock-style launchers to the displays where macOS does not keep the system Dock.
 
-The goal is simple: keep Apple’s Dock behavior where it already works, and add the missing Dock surface on the rest of your screens.
-
-![MoreDock dock preview](docs/images/moredock-dock.png)
+It follows your real Dock settings, stays out of the main Dock’s way, and runs without adding another icon to the macOS Dock.
 
 ![MoreDock settings](docs/images/moredock-settings.png)
 
-## Features ✨
+## What It Does ✨
 
-- 🖥️ Shows a Dock-style panel on secondary displays.
-- 🍎 Hides itself on the screen where the native macOS Dock lives.
-- 📐 Follows native Dock settings for edge, tile size, magnification, auto-hide delay, and reveal timing.
-- 🔄 Updates while running when `com.apple.dock` preferences change.
-- 🧊 Uses a rounded glass pill shape derived from the native Dock tile size.
-- 🪟 Can open apps using normal macOS behavior or move app windows to the display whose MoreDock icon was clicked.
-- 🔕 Runs as a menu-bar/accessory app, so there is no extra Dock icon.
-- 🔄 Includes Sparkle auto-updates plus update checks from the menu bar and Settings.
+- 🖥️ Adds Dock panels to extra displays.
+- 🍎 Hides on the display that already owns the native macOS Dock.
+- 📁 Mirrors pinned Dock apps, running apps, folders, and stacks such as Downloads.
+- 📐 Follows native Dock edge, tile size, magnification, auto-hide delay, and reveal timing.
+- 🧊 Uses a compact glass panel style with no visible Dock icon for MoreDock itself.
+- 🪟 Can move clicked apps to the display where their MoreDock icon was clicked.
+- 🔄 Uses Sparkle for signed app updates from GitHub releases.
 
-## How It Works 🧭
+## Current Release 🚀
 
-When **Follow native Dock** is enabled, MoreDock reads the same Dock preference keys macOS stores in `com.apple.dock`:
+Latest release: [MoreDock 0.1.4](https://github.com/ArioMoniri/moredock/releases/latest)
+
+Highlights:
+
+- 📁 Dock folders and persistent Dock apps are included.
+- 📏 Dock items shrink to fit the available display edge instead of scrolling.
+- ✨ Hidden auto-hide panels are fully transparent and moved outside the screen edge.
+- 🧊 Settings use a cleaner native glass layout.
+- 🔄 Update checks are available from the menu bar and Settings.
+
+## Install 📦
+
+Download the latest `.dmg`:
+
+[Download MoreDock](https://github.com/ArioMoniri/moredock/releases/latest)
+
+Install with Homebrew:
+
+```sh
+brew tap ArioMoniri/moredock https://github.com/ArioMoniri/moredock
+brew install --cask moredock
+```
+
+## Permissions 🔐
+
+MoreDock only needs Accessibility permission for **Clicked Display** mode.
+
+macOS stores that permission against the exact app bundle and signature. If you switch between local debug builds, unsigned builds, and signed release builds, macOS may ask again. For normal use, install the signed release from the `.dmg`, grant Accessibility permission once, then keep using that installed app.
+
+## Native Dock Matching 📐
+
+When **Follow native Dock** is enabled, MoreDock reads Dock preferences from `com.apple.dock`, including:
 
 - `orientation`
 - `tilesize`
@@ -30,64 +58,32 @@ When **Follow native Dock** is enabled, MoreDock reads the same Dock preference 
 - `autohide`
 - `autohide-delay`
 - `autohide-time-modifier`
+- `persistent-apps`
+- `persistent-others`
 
-The app refreshes those values while running, so changes made in System Settings or with `defaults write com.apple.dock ...` are picked up without restarting MoreDock.
-
-By default, **Hide where native Dock lives** is enabled. This prevents MoreDock from drawing on the main/native Dock screen, which avoids duplicate Dock surfaces.
+Those values refresh while the app is running, so changes made in System Settings are picked up automatically.
 
 ## Window Placement 🪟
 
-The **Open apps on** setting has two modes:
+The **Open on** setting has two modes:
 
-- **macOS**: activate apps exactly like a normal Dock click.
-- **Clicked Display**: activate the app, then move its windows to the display where you clicked the MoreDock icon.
+- **macOS**: activate apps normally.
+- **Clicked Display**: activate the app, then move its windows to the display where the icon was clicked.
 
-Clicked Display uses macOS Accessibility APIs. macOS may ask you to grant MoreDock Accessibility permission before it can move windows.
-
-## Install 📦
-
-Download the latest release:
-
-[Download MoreDock](https://github.com/ArioMoniri/moredock/releases/latest)
-
-Or install with Homebrew:
-
-```sh
-brew tap ArioMoniri/moredock https://github.com/ArioMoniri/moredock
-brew install --cask moredock
-```
+Clicked Display uses macOS Accessibility APIs. Apps that block Accessibility window movement may still stay on their original display.
 
 ## Checksums ✅
 
-Each release includes `SHA256SUMS.txt` next to the `.dmg`, `.zip`, and Sparkle `appcast.xml`.
-
-Verify a downloaded release:
+Each release includes `SHA256SUMS.txt` for the `.dmg`, `.zip`, and Sparkle `appcast.xml`.
 
 ```sh
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-## Release Notes 📝
-
-See [CHANGELOG.md](CHANGELOG.md).
-
-Latest highlights:
-
-- 🧊 Settings now use a compact native glass layout.
-- 🔄 Update checks are available directly inside Settings.
-- 📐 Dock sizing and pill shape stay derived from native Dock settings.
-- 🖼️ README images are rendered from the real app views.
-
-## Build From Source 🛠️
+## Build 🛠️
 
 ```sh
 ./scripts/build_app.sh
-```
-
-The app bundle is written to:
-
-```text
-.build/MoreDock.app
 ```
 
 Package locally:
@@ -95,3 +91,5 @@ Package locally:
 ```sh
 ./scripts/package_release.sh
 ```
+
+Release notes live in [CHANGELOG.md](CHANGELOG.md).

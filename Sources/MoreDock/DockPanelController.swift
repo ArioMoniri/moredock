@@ -42,7 +42,7 @@ final class DockPanelController {
             context.duration = animationDuration
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             panel.animator().setFrame(targetFrame, display: true)
-            panel.animator().alphaValue = isRevealed ? 1.0 : 0.08
+            panel.animator().alphaValue = isRevealed ? 1.0 : 0.0
         }
 
         if !panel.isVisible {
@@ -61,12 +61,9 @@ final class DockPanelController {
         revealed: Bool
     ) -> NSRect {
         let visible = settings.respectMenuBarSafeArea && !settings.followsSystemDock ? screen.visibleFrame : screen.frame
-        let itemCount = max(apps.count, 1)
-        let gap: CGFloat = max(7, CGFloat(settings.iconSize) * 0.14)
-        let padding: CGFloat = max(9, CGFloat(settings.iconSize) * 0.24)
-        let icon = CGFloat(settings.iconSize)
-        let thickness = icon + padding * 2
-        let length = min(CGFloat(itemCount) * (icon + gap) - gap + padding * 2, max(240, visible.width - 48))
+        let metrics = DockPanelMetrics(settings: settings, itemCount: apps.count, visibleFrame: visible)
+        let thickness = metrics.thickness
+        let length = metrics.length
         let inset: CGFloat = settings.autoHide || settings.followsSystemDock ? 0 : 8
 
         switch settings.edge {
@@ -78,31 +75,29 @@ final class DockPanelController {
                 height: thickness
             )
             if !revealed {
-                frame.origin.y = screen.frame.minY - frame.height + 3
+                frame.origin.y = screen.frame.minY - frame.height - 2
             }
             return frame
         case .left:
-            let height = min(CGFloat(itemCount) * (icon + gap) - gap + padding * 2, max(240, visible.height - 48))
             var frame = NSRect(
                 x: visible.minX + inset,
-                y: visible.midY - height / 2,
+                y: visible.midY - length / 2,
                 width: thickness,
-                height: height
+                height: length
             )
             if !revealed {
-                frame.origin.x = screen.frame.minX - frame.width + 3
+                frame.origin.x = screen.frame.minX - frame.width - 2
             }
             return frame
         case .right:
-            let height = min(CGFloat(itemCount) * (icon + gap) - gap + padding * 2, max(240, visible.height - 48))
             var frame = NSRect(
                 x: visible.maxX - thickness - inset,
-                y: visible.midY - height / 2,
+                y: visible.midY - length / 2,
                 width: thickness,
-                height: height
+                height: length
             )
             if !revealed {
-                frame.origin.x = screen.frame.maxX - 3
+                frame.origin.x = screen.frame.maxX + 2
             }
             return frame
         }
@@ -184,22 +179,47 @@ struct SnapshotSettings: Equatable {
     }
 }
 
+struct DockPanelMetrics {
+    let iconSize: CGFloat
+    let gap: CGFloat
+    let padding: CGFloat
+    let thickness: CGFloat
+    let length: CGFloat
+
+    init(settings: SnapshotSettings, itemCount: Int, visibleFrame: NSRect) {
+        let count = max(itemCount, 1)
+        let baseIcon = CGFloat(settings.iconSize)
+        let availableLength = max(180, settings.edge == .bottom ? visibleFrame.width - 48 : visibleFrame.height - 48)
+        let baseGap = max(6, baseIcon * 0.13)
+        let basePadding = max(8, baseIcon * 0.22)
+        let fittedIcon = floor((availableLength - basePadding * 2 + baseGap) / CGFloat(count) - baseGap)
+        iconSize = min(baseIcon, max(18, fittedIcon))
+        gap = max(4, min(baseGap, iconSize * 0.18))
+        padding = max(7, min(basePadding, iconSize * 0.30))
+        thickness = iconSize + padding * 2
+        length = min(
+            CGFloat(count) * (iconSize + gap) - gap + padding * 2,
+            availableLength
+        )
+    }
+}
+
 struct DockPanelView: View {
     let apps: [DockAppItem]
     let settings: SnapshotSettings
     let targetVisibleFrame: NSRect
 
     var body: some View {
+        let metrics = DockPanelMetrics(settings: settings, itemCount: apps.count, visibleFrame: targetVisibleFrame)
+
         DockVisualEffect(liquidGlass: settings.liquidGlass)
             .overlay {
-                ScrollView(settings.edge == .bottom ? .horizontal : .vertical, showsIndicators: false) {
-                    stack {
-                        ForEach(apps) { item in
-                            DockIconButton(item: item, settings: settings, targetVisibleFrame: targetVisibleFrame)
-                        }
+                stack(spacing: metrics.gap) {
+                    ForEach(apps) { item in
+                        DockIconButton(item: item, settings: settings, targetVisibleFrame: targetVisibleFrame, baseIconSize: metrics.iconSize)
                     }
-                    .padding(12)
                 }
+                .padding(metrics.padding)
             }
             .clipShape(RoundedRectangle(cornerRadius: settings.cornerRadius, style: .continuous))
             .overlay {
@@ -210,11 +230,11 @@ struct DockPanelView: View {
     }
 
     @ViewBuilder
-    private func stack<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+    private func stack<Content: View>(spacing: CGFloat, @ViewBuilder content: () -> Content) -> some View {
         if settings.edge == .bottom {
-            HStack(spacing: 8, content: content)
+            HStack(spacing: spacing, content: content)
         } else {
-            VStack(spacing: 8, content: content)
+            VStack(spacing: spacing, content: content)
         }
     }
 }
@@ -223,6 +243,7 @@ private struct DockIconButton: View {
     let item: DockAppItem
     let settings: SnapshotSettings
     let targetVisibleFrame: NSRect
+    let baseIconSize: CGFloat
     @State private var isHovering = false
 
     var body: some View {
@@ -245,26 +266,57 @@ private struct DockIconButton: View {
 
     private var iconSize: CGFloat {
         if isHovering && settings.magnification {
-            return CGFloat(settings.magnifiedIconSize)
+            return min(CGFloat(settings.magnifiedIconSize), baseIconSize * 1.22)
         }
-        return CGFloat(settings.iconSize)
+        return baseIconSize
     }
 
     private func activate() {
-        if let app = NSRunningApplication(processIdentifier: item.processIdentifier) {
+        let shouldMoveToClickedDisplay = settings.activationDisplayMode == .clickedDisplay && !targetVisibleFrame.isEmpty
+        let clickedDisplayFrame = targetVisibleFrame
+        let moveAfterActivation: @Sendable (pid_t) -> Void = { processIdentifier in
+            guard shouldMoveToClickedDisplay else { return }
+            DispatchQueue.main.async {
+                guard AccessibilityWindowMover.isTrusted(prompt: true) else { return }
+                for attempt in 1...6 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.18) {
+                        AccessibilityWindowMover.moveWindows(for: processIdentifier, to: clickedDisplayFrame)
+                    }
+                }
+            }
+        }
+
+        if let processIdentifier = item.processIdentifier,
+           let app = NSRunningApplication(processIdentifier: processIdentifier) {
             if #available(macOS 14.0, *) {
                 app.activate()
             } else {
                 app.activate(options: [.activateIgnoringOtherApps])
             }
+            moveAfterActivation(processIdentifier)
+            return
+        }
 
-            if settings.activationDisplayMode == .clickedDisplay, !targetVisibleFrame.isEmpty {
-                for attempt in 1...6 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.18) {
-                        AccessibilityWindowMover.moveWindows(for: item.processIdentifier, to: targetVisibleFrame)
+        if let bundleIdentifier = item.bundleIdentifier,
+           let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) ?? item.url {
+            NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration()) { app, _ in
+                if let processIdentifier = app?.processIdentifier {
+                    moveAfterActivation(processIdentifier)
+                } else {
+                    for attempt in 1...8 {
+                        DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.20) {
+                            if let processIdentifier = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier {
+                                moveAfterActivation(processIdentifier)
+                            }
+                        }
                     }
                 }
             }
+            return
+        }
+
+        if let url = item.url {
+            NSWorkspace.shared.open(url)
         }
     }
 }

@@ -16,8 +16,13 @@ enum ActivationDisplayMode: String, CaseIterable, Identifiable {
 }
 
 enum AccessibilityWindowMover {
-    static func moveWindows(for processIdentifier: pid_t, to visibleFrame: NSRect) {
-        guard ensureTrusted() else { return }
+    static func isTrusted(prompt: Bool) -> Bool {
+        let options = ["AXTrustedCheckOptionPrompt": prompt] as CFDictionary
+        return AXIsProcessTrustedWithOptions(options)
+    }
+
+    static func moveWindows(for processIdentifier: pid_t, to visibleFrame: NSRect, prompt: Bool = false) {
+        guard isTrusted(prompt: prompt) else { return }
 
         let appElement = AXUIElementCreateApplication(processIdentifier)
         var windowsValue: CFTypeRef?
@@ -29,11 +34,6 @@ enum AccessibilityWindowMover {
         for window in windows.prefix(6) {
             move(window: window, to: visibleFrame)
         }
-    }
-
-    private static func ensureTrusted() -> Bool {
-        let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
-        return AXIsProcessTrustedWithOptions(options)
     }
 
     private static func move(window: AXUIElement, to visibleFrame: NSRect) {

@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 
 struct DockRuntimeSettings: Equatable {
     var edge: DockEdge
@@ -74,6 +75,10 @@ enum SystemDockPreferences {
         return reservedScreens.first ?? NSScreen.main
     }
 
+    static func persistentDockItems() -> [DockAppItem] {
+        persistentItems(for: "persistent-apps") + persistentItems(for: "persistent-others")
+    }
+
     private static func edge(from orientation: String?) -> DockEdge? {
         switch orientation {
         case "left": .left
@@ -116,5 +121,44 @@ enum SystemDockPreferences {
         default:
             nil
         }
+    }
+
+    private static func persistentItems(for key: String) -> [DockAppItem] {
+        guard let items = value(key) as? [[String: Any]] else { return [] }
+        return items.compactMap { item in
+            guard let tileData = item["tile-data"] as? [String: Any] else { return nil }
+            let label = tileData["file-label"] as? String
+            let bundleIdentifier = tileData["bundle-identifier"] as? String
+            let fileData = tileData["file-data"] as? [String: Any]
+            let urlString = fileData?["_CFURLString"] as? String
+            let url = urlString.flatMap(URL.init(string:))
+            let name = label ?? bundleIdentifier ?? url?.deletingPathExtension().lastPathComponent ?? "Dock Item"
+            let tileType = item["tile-type"] as? String
+            let kind: DockAppItem.Kind = tileType == "directory-tile" ? .folder : .application
+            let id = bundleIdentifier ?? url?.absoluteString ?? name
+            let icon: NSImage
+
+            if let url, url.isFileURL {
+                icon = NSWorkspace.shared.icon(forFile: url.path)
+            } else {
+                icon = NSWorkspace.shared.icon(for: kind == .folder ? .folder : .item)
+            }
+
+            return DockAppItem(
+                id: id,
+                name: name,
+                bundleIdentifier: bundleIdentifier,
+                url: url,
+                icon: icon,
+                processIdentifier: runningProcessIdentifier(for: bundleIdentifier),
+                kind: kind,
+                isRunning: runningProcessIdentifier(for: bundleIdentifier) != nil
+            )
+        }
+    }
+
+    private static func runningProcessIdentifier(for bundleIdentifier: String?) -> pid_t? {
+        guard let bundleIdentifier else { return nil }
+        return NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier
     }
 }
