@@ -67,7 +67,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func openSettings() {
         if settingsWindowController == nil {
-            settingsWindowController = SettingsWindowController(settings: settings)
+            settingsWindowController = SettingsWindowController(settings: settings) { [weak self] in
+                self?.updaterController.checkForUpdates(nil)
+            }
         }
 
         NSApp.activate(ignoringOtherApps: true)

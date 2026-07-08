@@ -104,8 +104,8 @@ private func renderAll() throws {
             startPoint: .top,
             endPoint: .bottom
         )
-        SettingsView(settings: settings)
-            .frame(width: 540, height: 620)
+        SettingsView(settings: settings, onCheckForUpdates: {})
+            .frame(width: 700, height: 500)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             .shadow(color: .black.opacity(0.35), radius: 24, y: 14)
     }

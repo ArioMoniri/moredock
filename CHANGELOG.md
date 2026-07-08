@@ -1,5 +1,14 @@
 # Release Notes
 
+## 0.1.3
+
+This release tightens the settings experience and makes updater access visible from the app itself.
+
+- 🧊 Reworks Settings into a compact native macOS glass panel.
+- 🎛️ Groups Dock, behavior, appearance, and Liquid Glass controls into clearer sections.
+- 🔄 Adds a Settings-window update check backed by Sparkle.
+- 🖼️ Refreshes README screenshots from the real app views.
+
 ## 0.1.2
 
 This release replaces the app icon with a simpler Dock-focused symbol.

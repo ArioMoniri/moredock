@@ -17,7 +17,7 @@ The goal is simple: keep Apple’s Dock behavior where it already works, and add
 - 🧊 Uses a rounded glass pill shape derived from the native Dock tile size.
 - 🪟 Can open apps using normal macOS behavior or move app windows to the display whose MoreDock icon was clicked.
 - 🔕 Runs as a menu-bar/accessory app, so there is no extra Dock icon.
-- 🔄 Includes Sparkle auto-updates and a **Check for Updates...** menu item.
+- 🔄 Includes Sparkle auto-updates plus update checks from the menu bar and Settings.
 
 ## How It Works 🧭
 
@@ -73,11 +73,10 @@ See [CHANGELOG.md](CHANGELOG.md).
 
 Latest highlights:
 
-- 🖥️ MoreDock now hides on the native Dock screen by default.
-- 📐 Dock sizing and pill shape are derived from native Dock settings.
-- ✨ Panel shadows were removed to avoid display-junction bleed.
-- 🪟 Clicked-display window placement has been improved.
-- 🖼️ README images now use real app screenshots.
+- 🧊 Settings now use a compact native glass layout.
+- 🔄 Update checks are available directly inside Settings.
+- 📐 Dock sizing and pill shape stay derived from native Dock settings.
+- 🖼️ README images are rendered from the real app views.
 
 ## Build From Source 🛠️
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PRODUCT_NAME="MoreDock"
-VERSION="${VERSION:-0.1.2}"
+VERSION="${VERSION:-0.1.3}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
@@ -92,7 +92,7 @@ if [[ -n "${SPARKLE_PRIVATE_KEY:-}" ]]; then
 
 - Native multi-display dock panels.
 - Follows macOS Dock position, size, magnification, and auto-hide timing.
-- Sparkle-powered app updates.
+- Sparkle-powered app updates with a Settings-window update check.
 NOTES
 
   echo "${SPARKLE_PRIVATE_KEY}" | "${SPARKLE_BIN_DIR}/generate_appcast" \
