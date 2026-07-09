@@ -41,7 +41,11 @@ Highlights:
 
 Download the latest `.dmg`:
 
-[![Download for macOS](docs/images/download-for-macos.svg)](https://github.com/ArioMoniri/moredock/releases/latest)
+<p align="center">
+  <a href="https://github.com/ArioMoniri/moredock/releases/latest">
+    <img src="docs/images/download-for-macos.svg" alt="Download for macOS" height="56">
+  </a>
+</p>
 
 Install with Homebrew:
 
