@@ -21,6 +21,11 @@ struct DisplayDockSettings: Codable, Equatable {
     var isEnabled = true
     var followsGlobalPlacement = true
     var edge: DockEdge = .bottom
+    var followsGlobalAppearance = true
+    var iconSize = 48.0
+    var opacity = 0.82
+    var autoHide = false
+    var magnification = true
     var avoidDisplayJunctions = true
 }
 

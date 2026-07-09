@@ -31,7 +31,7 @@ enum AccessibilityWindowMover {
             return
         }
 
-        for window in windows.prefix(6) {
+        for window in windows.prefix(8) {
             move(window: window, to: visibleFrame)
         }
     }
@@ -57,16 +57,16 @@ enum AccessibilityWindowMover {
         }
 
         let clampedSize = CGSize(
-            width: min(currentSize.width, visibleFrame.width - 32),
-            height: min(currentSize.height, visibleFrame.height - 32)
+            width: max(220, min(currentSize.width, visibleFrame.width - 32)),
+            height: max(160, min(currentSize.height, visibleFrame.height - 32))
         )
-        let origin = CGPoint(
+        let appKitOrigin = CGPoint(
             x: visibleFrame.midX - clampedSize.width / 2,
             y: visibleFrame.midY - clampedSize.height / 2
         )
 
         var newSize = clampedSize
-        var newPosition = origin
+        var newPosition = axPosition(fromAppKitOrigin: appKitOrigin, size: clampedSize)
         guard let sizeAX = AXValueCreate(.cgSize, &newSize),
               let positionAX = AXValueCreate(.cgPoint, &newPosition) else {
             return
@@ -75,5 +75,19 @@ enum AccessibilityWindowMover {
         AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeAX)
         AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, positionAX)
         AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+    }
+
+    private static func axPosition(fromAppKitOrigin origin: CGPoint, size: CGSize) -> CGPoint {
+        let displayBounds = NSScreen.screens.map(\.frame)
+        guard let union = displayBounds.reduce(nil as NSRect?, { partial, frame in
+            partial?.union(frame) ?? frame
+        }) else {
+            return origin
+        }
+
+        return CGPoint(
+            x: origin.x,
+            y: union.maxY - origin.y - size.height
+        )
     }
 }

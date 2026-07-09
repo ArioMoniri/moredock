@@ -1,5 +1,14 @@
 # Release Notes
 
+## 0.1.9
+
+This release expands the per-display controls and fixes a likely Clicked Display coordinate issue.
+
+- 🖥️ Adds separate external-display controls for location, icon size, opacity, auto-hide, magnification, and junction behavior.
+- 🪟 Converts Clicked Display window placement from AppKit coordinates to Accessibility coordinates before moving windows.
+- 🧊 Moves Settings to lighter liquid-glass materials.
+- 📏 Keeps the vertical Dock fit fix from 0.1.8.
+
 ## 0.1.8
 
 This release adds the missing per-display placement controls and fixes more of the Dock behavior issues.

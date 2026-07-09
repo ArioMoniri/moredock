@@ -156,9 +156,16 @@ private struct DisplaySettingsSection: View {
     @ObservedObject var settings: SettingsStore
 
     var body: some View {
-        SettingsSection("Displays") {
+        SettingsSection("External Displays") {
             VStack(spacing: 12) {
-                ForEach(displayRows) { display in
+                if externalDisplayRows.isEmpty {
+                    Text("Connect an external display to configure its MoreDock separately.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                ForEach(externalDisplayRows) { display in
                     VStack(spacing: 9) {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
@@ -177,7 +184,7 @@ private struct DisplaySettingsSection: View {
 
                         SettingsToggleRow("Use global placement", isOn: binding(display.id, \.followsGlobalPlacement))
 
-                        SettingsPickerRow("Edge") {
+                        SettingsPickerRow("Location") {
                             Picker("Edge", selection: binding(display.id, \.edge)) {
                                 ForEach(DockEdge.allCases) { edge in
                                     Text(edge.title).tag(edge)
@@ -189,10 +196,24 @@ private struct DisplaySettingsSection: View {
                         }
                         .disabled(settings.settingsForDisplay(display.id).followsGlobalPlacement)
 
+                        SettingsToggleRow("Use global appearance", isOn: binding(display.id, \.followsGlobalAppearance))
+
+                        SettingsSliderRow(title: "Icon size", value: binding(display.id, \.iconSize), range: 18...96, step: 1, suffix: "")
+                            .disabled(settings.settingsForDisplay(display.id).followsGlobalAppearance)
+
+                        SettingsSliderRow(title: "Opacity", value: binding(display.id, \.opacity), range: 0.45...1.0, step: 0.01, suffix: "%")
+                            .disabled(settings.settingsForDisplay(display.id).followsGlobalAppearance)
+
+                        SettingsToggleRow("Auto-hide", isOn: binding(display.id, \.autoHide))
+                            .disabled(settings.settingsForDisplay(display.id).followsGlobalAppearance)
+
+                        SettingsToggleRow("Magnification", isOn: binding(display.id, \.magnification))
+                            .disabled(settings.settingsForDisplay(display.id).followsGlobalAppearance)
+
                         SettingsToggleRow("Avoid junctions", isOn: binding(display.id, \.avoidDisplayJunctions))
                     }
 
-                    if display.id != displayRows.last?.id {
+                    if display.id != externalDisplayRows.last?.id {
                         Divider()
                     }
                 }
@@ -200,17 +221,18 @@ private struct DisplaySettingsSection: View {
         }
     }
 
-    private var displayRows: [DisplayRow] {
-        NSScreen.screens.enumerated().compactMap { index, screen in
+    private var externalDisplayRows: [DisplayRow] {
+        let primaryID = CGMainDisplayID()
+        return NSScreen.screens.enumerated().compactMap { index, screen -> DisplayRow? in
             guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
                 return nil
             }
+            guard number.uint32Value != primaryID else { return nil }
 
             let size = "\(Int(screen.frame.width))x\(Int(screen.frame.height))"
-            let primary = number.uint32Value == CGMainDisplayID()
             return DisplayRow(
                 id: number.stringValue,
-                name: primary ? "Primary Display" : "Display \(index + 1)",
+                name: "External Display \(index + 1)",
                 detail: "\(size) - ID \(number.stringValue)"
             )
         }
@@ -310,10 +332,10 @@ private struct SettingsSection<Content: View>: View {
 
             content
                 .padding(12)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .overlay {
                     RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(.white.opacity(0.20), lineWidth: 1)
+                        .strokeBorder(.white.opacity(0.28), lineWidth: 1)
                 }
         }
     }
@@ -437,7 +459,7 @@ private struct SettingsVisualEffect: NSViewRepresentable {
     func makeNSView(context: Context) -> NSVisualEffectView {
         let view = NSVisualEffectView()
         view.blendingMode = .behindWindow
-        view.material = .hudWindow
+        view.material = .underWindowBackground
         view.state = .active
         return view
     }

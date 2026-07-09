@@ -24,7 +24,7 @@ It follows your real Dock settings, stays out of the main Dock’s way, and runs
 
 ## Current Release 🚀
 
-Latest release: [MoreDock 0.1.8](https://github.com/ArioMoniri/moredock/releases/latest)
+Latest release: [MoreDock 0.1.9](https://github.com/ArioMoniri/moredock/releases/latest)
 
 Highlights:
 
@@ -32,7 +32,7 @@ Highlights:
 - 📏 Dock items shrink to fit the available display edge instead of scrolling.
 - ✨ Hidden auto-hide panels are fully transparent and moved outside the screen edge.
 - 🎛️ macOS Dock location, size, zoom, magnification, and auto-hide can be edited from MoreDock.
-- 🖥️ Each connected display can be shown/hidden and assigned its own MoreDock edge.
+- 🖥️ Each external display can be shown/hidden and assigned its own location, size, opacity, auto-hide, magnification, and junction behavior.
 - 🧭 Display-junction avoidance keeps side docks off shared monitor borders by default.
 - 🖱️ Extra docks no longer depend on which display currently has focus.
 - 🔄 Update checks are available from the menu bar and Settings.

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 PRODUCT_NAME="MoreDock"
-VERSION="${VERSION:-0.1.8}"
+VERSION="${VERSION:-0.1.9}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
@@ -91,9 +91,9 @@ if [[ -n "${SPARKLE_PRIVATE_KEY:-}" ]]; then
 # MoreDock ${VERSION}
 
 - Native multi-display dock panels.
-- Adds per-display MoreDock placement controls.
-- Fixes vertical fitting so icon button padding is included.
-- Improves clicked-display app activation and window movement retries.
+- Adds per-external-display size, opacity, auto-hide, magnification, location, and junction controls.
+- Converts clicked-display Accessibility movement to AX coordinates.
+- Makes Settings use lighter liquid-glass materials.
 - Sparkle-powered app updates.
 NOTES
 

@@ -162,6 +162,14 @@ final class DockController {
             adjusted.edge = displaySettings.edge
         }
 
+        if !displaySettings.followsGlobalAppearance {
+            adjusted.iconSize = displaySettings.iconSize
+            adjusted.opacity = displaySettings.opacity
+            adjusted.autoHide = displaySettings.autoHide
+            adjusted.magnification = displaySettings.magnification
+            adjusted.magnifiedIconSize = max(displaySettings.iconSize * 1.22, adjusted.magnifiedIconSize)
+        }
+
         adjusted.avoidDisplayJunctions = displaySettings.avoidDisplayJunctions
 
         guard adjusted.avoidDisplayJunctions else { return adjusted }
