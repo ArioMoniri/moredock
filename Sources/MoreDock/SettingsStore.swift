@@ -1,7 +1,7 @@
 import AppKit
 import Combine
 
-enum DockEdge: String, CaseIterable, Identifiable {
+enum DockEdge: String, CaseIterable, Codable, Identifiable {
     case bottom
     case left
     case right
@@ -15,6 +15,13 @@ enum DockEdge: String, CaseIterable, Identifiable {
         case .right: "Right"
         }
     }
+}
+
+struct DisplayDockSettings: Codable, Equatable {
+    var isEnabled = true
+    var followsGlobalPlacement = true
+    var edge: DockEdge = .bottom
+    var avoidDisplayJunctions = true
 }
 
 @MainActor
@@ -71,6 +78,10 @@ final class SettingsStore: ObservableObject {
         didSet { save(avoidDisplayJunctions, for: Keys.avoidDisplayJunctions) }
     }
 
+    @Published var displaySettings: [String: DisplayDockSettings] {
+        didSet { saveDisplaySettings() }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         isEnabled = defaults.object(forKey: Keys.isEnabled) as? Bool ?? true
@@ -86,12 +97,35 @@ final class SettingsStore: ObservableObject {
         autoHide = defaults.object(forKey: Keys.autoHide) as? Bool ?? false
         respectMenuBarSafeArea = defaults.object(forKey: Keys.respectMenuBarSafeArea) as? Bool ?? true
         avoidDisplayJunctions = defaults.object(forKey: Keys.avoidDisplayJunctions) as? Bool ?? true
+        if let data = defaults.data(forKey: Keys.displaySettings),
+           let decoded = try? JSONDecoder().decode([String: DisplayDockSettings].self, from: data) {
+            displaySettings = decoded
+        } else {
+            displaySettings = [:]
+        }
     }
 
     private let defaults: UserDefaults
 
     private func save(_ value: Any, for key: String) {
         defaults.set(value, forKey: key)
+    }
+
+    func settingsForDisplay(_ displayID: String) -> DisplayDockSettings {
+        displaySettings[displayID] ?? DisplayDockSettings()
+    }
+
+    func updateSettingsForDisplay(_ displayID: String, mutate: (inout DisplayDockSettings) -> Void) {
+        var next = displaySettings[displayID] ?? DisplayDockSettings()
+        mutate(&next)
+        var copy = displaySettings
+        copy[displayID] = next
+        displaySettings = copy
+    }
+
+    private func saveDisplaySettings() {
+        guard let data = try? JSONEncoder().encode(displaySettings) else { return }
+        defaults.set(data, forKey: Keys.displaySettings)
     }
 
     private enum Keys {
@@ -108,5 +142,6 @@ final class SettingsStore: ObservableObject {
         static let autoHide = "autoHide"
         static let respectMenuBarSafeArea = "respectMenuBarSafeArea"
         static let avoidDisplayJunctions = "avoidDisplayJunctions"
+        static let displaySettings = "displaySettings"
     }
 }

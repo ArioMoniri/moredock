@@ -194,13 +194,15 @@ struct DockPanelMetrics {
         let availableLength = max(180, settings.edge == .bottom ? visibleFrame.width - 48 : visibleFrame.height - 48)
         let baseGap = max(6, baseIcon * 0.13)
         let basePadding = max(8, baseIcon * 0.22)
-        let fittedIcon = floor((availableLength - basePadding * 2 + baseGap) / CGFloat(count) - baseGap)
-        iconSize = min(baseIcon, max(18, fittedIcon))
+        let buttonExtra: CGFloat = 4
+        let fittedIcon = floor((availableLength - basePadding * 2 + baseGap) / CGFloat(count) - baseGap - buttonExtra)
+        iconSize = min(baseIcon, max(12, fittedIcon))
         gap = max(4, min(baseGap, iconSize * 0.18))
         padding = max(7, min(basePadding, iconSize * 0.30))
-        thickness = iconSize + padding * 2
+        let buttonExtent = iconSize + buttonExtra
+        thickness = buttonExtent + padding * 2
         length = min(
-            CGFloat(count) * (iconSize + gap) - gap + padding * 2,
+            CGFloat(count) * (buttonExtent + gap) - gap + padding * 2,
             availableLength
         )
     }
@@ -280,8 +282,8 @@ private struct DockIconButton: View {
             guard shouldMoveToClickedDisplay else { return }
             DispatchQueue.main.async {
                 guard AccessibilityWindowMover.isTrusted(prompt: false) else { return }
-                for attempt in 1...6 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.18) {
+                for attempt in 1...14 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.16) {
                         AccessibilityWindowMover.moveWindows(for: processIdentifier, to: clickedDisplayFrame)
                     }
                 }
@@ -290,22 +292,20 @@ private struct DockIconButton: View {
 
         if let processIdentifier = item.processIdentifier,
            let app = NSRunningApplication(processIdentifier: processIdentifier) {
-            if #available(macOS 14.0, *) {
-                app.activate()
-            } else {
-                app.activate(options: [.activateIgnoringOtherApps])
-            }
+            app.activate(options: [.activateAllWindows])
             moveAfterActivation(processIdentifier)
             return
         }
 
         if let bundleIdentifier = item.bundleIdentifier,
            let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) ?? item.url {
-            NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration()) { app, _ in
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            NSWorkspace.shared.openApplication(at: url, configuration: configuration) { app, _ in
                 if let processIdentifier = app?.processIdentifier {
                     moveAfterActivation(processIdentifier)
                 } else {
-                    for attempt in 1...8 {
+                    for attempt in 1...14 {
                         DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.20) {
                             if let processIdentifier = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier {
                                 moveAfterActivation(processIdentifier)

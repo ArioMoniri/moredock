@@ -70,6 +70,8 @@ struct SettingsView: View {
                                     SettingsAccessibilityRow()
                                 }
                             }
+
+                            DisplaySettingsSection(settings: settings)
                         }
                         .frame(maxWidth: .infinity, alignment: .top)
 
@@ -147,6 +149,87 @@ struct SettingsView: View {
                 .font(.callout.weight(.medium))
                 .foregroundStyle(.secondary)
         }
+    }
+}
+
+private struct DisplaySettingsSection: View {
+    @ObservedObject var settings: SettingsStore
+
+    var body: some View {
+        SettingsSection("Displays") {
+            VStack(spacing: 12) {
+                ForEach(displayRows) { display in
+                    VStack(spacing: 9) {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(display.name)
+                                    .font(.callout.weight(.medium))
+                                Text(display.detail)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Toggle("Show", isOn: binding(display.id, \.isEnabled))
+                                .labelsHidden()
+                                .toggleStyle(.switch)
+                                .controlSize(.small)
+                        }
+
+                        SettingsToggleRow("Use global placement", isOn: binding(display.id, \.followsGlobalPlacement))
+
+                        SettingsPickerRow("Edge") {
+                            Picker("Edge", selection: binding(display.id, \.edge)) {
+                                ForEach(DockEdge.allCases) { edge in
+                                    Text(edge.title).tag(edge)
+                                }
+                            }
+                            .labelsHidden()
+                            .pickerStyle(.segmented)
+                            .frame(width: 190)
+                        }
+                        .disabled(settings.settingsForDisplay(display.id).followsGlobalPlacement)
+
+                        SettingsToggleRow("Avoid junctions", isOn: binding(display.id, \.avoidDisplayJunctions))
+                    }
+
+                    if display.id != displayRows.last?.id {
+                        Divider()
+                    }
+                }
+            }
+        }
+    }
+
+    private var displayRows: [DisplayRow] {
+        NSScreen.screens.enumerated().compactMap { index, screen in
+            guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
+                return nil
+            }
+
+            let size = "\(Int(screen.frame.width))x\(Int(screen.frame.height))"
+            let primary = number.uint32Value == CGMainDisplayID()
+            return DisplayRow(
+                id: number.stringValue,
+                name: primary ? "Primary Display" : "Display \(index + 1)",
+                detail: "\(size) - ID \(number.stringValue)"
+            )
+        }
+    }
+
+    private func binding<Value>(_ displayID: String, _ keyPath: WritableKeyPath<DisplayDockSettings, Value>) -> Binding<Value> {
+        Binding {
+            settings.settingsForDisplay(displayID)[keyPath: keyPath]
+        } set: { value in
+            settings.updateSettingsForDisplay(displayID) { displaySettings in
+                displaySettings[keyPath: keyPath] = value
+            }
+        }
+    }
+
+    private struct DisplayRow: Identifiable {
+        let id: String
+        let name: String
+        let detail: String
     }
 }
 

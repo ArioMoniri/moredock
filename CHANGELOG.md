@@ -1,5 +1,14 @@
 # Release Notes
 
+## 0.1.8
+
+This release adds the missing per-display placement controls and fixes more of the Dock behavior issues.
+
+- 🖥️ Adds a Displays section where each screen can be enabled/disabled and assigned a custom MoreDock edge.
+- 📏 Fixes vertical Dock fitting by including icon button padding in the fit calculation.
+- 🪟 Improves Clicked Display mode with stronger app activation and longer window-move retries.
+- 🧭 Keeps per-display junction avoidance configurable for each screen.
+
 ## 0.1.7
 
 This release fixes the focus-dependent display behavior.

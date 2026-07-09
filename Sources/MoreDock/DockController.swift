@@ -128,6 +128,11 @@ final class DockController {
             .screenNumber {
             targetScreens.removeAll { $0.screenNumber == nativeDockScreenNumber }
         }
+        targetScreens = targetScreens.filter { screen in
+            guard let displayID = screen.screenNumber?.stringValue else { return false }
+            return settings.settingsForDisplay(displayID).isEnabled
+        }
+
         let targetNumbers = Set(targetScreens.compactMap(\.screenNumber))
 
         for (number, panel) in panels where !targetNumbers.contains(number) {
@@ -139,7 +144,7 @@ final class DockController {
             guard let number = screen.screenNumber else { continue }
             let panel = panels[number] ?? DockPanelController(screenNumber: number)
             panels[number] = panel
-            let panelSettings = effectiveSettings(runtimeSettings, for: screen, allScreens: NSScreen.screens)
+            let panelSettings = effectiveSettings(runtimeSettings, for: screen, allScreens: NSScreen.screens, displayID: number.stringValue)
             panel.update(
                 screen: screen,
                 apps: dockItems,
@@ -149,12 +154,20 @@ final class DockController {
         }
     }
 
-    private func effectiveSettings(_ settings: DockRuntimeSettings, for screen: NSScreen, allScreens: [NSScreen]) -> DockRuntimeSettings {
-        guard settings.avoidDisplayJunctions else { return settings }
-        guard isEdgeShared(settings.edge, of: screen, with: allScreens) else { return settings }
-
+    private func effectiveSettings(_ settings: DockRuntimeSettings, for screen: NSScreen, allScreens: [NSScreen], displayID: String) -> DockRuntimeSettings {
+        let displaySettings = self.settings.settingsForDisplay(displayID)
         var adjusted = settings
-        switch settings.edge {
+
+        if !displaySettings.followsGlobalPlacement {
+            adjusted.edge = displaySettings.edge
+        }
+
+        adjusted.avoidDisplayJunctions = displaySettings.avoidDisplayJunctions
+
+        guard adjusted.avoidDisplayJunctions else { return adjusted }
+        guard isEdgeShared(adjusted.edge, of: screen, with: allScreens) else { return adjusted }
+
+        switch adjusted.edge {
         case .left:
             adjusted.edge = isEdgeShared(.right, of: screen, with: allScreens) ? .bottom : .right
         case .right:
