@@ -6,12 +6,6 @@ It follows your real Dock settings, stays out of the main Dock’s way, and runs
 
 ![MoreDock settings](docs/images/moredock-settings.png)
 
-## Detective Rive Element 🕵️
-
-![Detective Dock Watch](docs/images/detective-rive-preview.svg)
-
-[Open the Rive-ready canvas](docs/rive/detective-dock.html)
-
 ## What It Does ✨
 
 - 🖥️ Adds Dock panels to extra displays.
