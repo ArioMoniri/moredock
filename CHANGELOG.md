@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.3.1
+
+- 🎯 Fixes Clicked Display placing the window on the wrong screen / a display junction instead of centered on the clicked display. The AppKit→Accessibility coordinate conversion now references the primary display's top edge rather than the union of all displays, which had offset the window by the height of any monitor sitting above the primary.
+
 ## 0.3.0
 
 - 📌 Each dock can now have its **own independent app list**. Pin or remove apps by dragging an app onto a dock, using **Add App…** in Settings, or right-clicking a dock icon; adding asks whether to apply to this dock or all docks, and a per-display **Reset** returns the dock to mirroring the macOS Dock.

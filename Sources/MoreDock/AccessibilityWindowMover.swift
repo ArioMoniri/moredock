@@ -89,16 +89,19 @@ enum AccessibilityWindowMover {
     }
 
     private static func axPosition(fromAppKitOrigin origin: CGPoint, size: CGSize) -> CGPoint {
-        let displayBounds = NSScreen.screens.map(\.frame)
-        guard let union = displayBounds.reduce(nil as NSRect?, { partial, frame in
-            partial?.union(frame) ?? frame
-        }) else {
-            return origin
-        }
+        // Accessibility/Quartz global coordinates put (0,0) at the TOP-LEFT of the
+        // PRIMARY display with y increasing downward, while AppKit uses bottom-left
+        // with y increasing upward. The reference is the primary display's top —
+        // NOT the union of all displays. Using the union offsets the window by the
+        // height of any display sitting above the primary, which dropped clicked
+        // windows onto the wrong screen / a display junction.
+        let primaryTop = NSScreen.screens.first { $0.frame.origin == .zero }?.frame.maxY
+            ?? NSScreen.screens.map(\.frame.maxY).max()
+            ?? (origin.y + size.height)
 
         return CGPoint(
             x: origin.x,
-            y: union.maxY - origin.y - size.height
+            y: primaryTop - origin.y - size.height
         )
     }
 }
