@@ -267,8 +267,13 @@ final class DockController {
             let runtime = SystemDockPreferences.runtimeSettings(fallback: settings)
             cachedRuntimeSettings = runtime
             cachedGlobalEdge = DockPlacement.globalEdge(for: settings)
-            cachedNativeDockScreens = (settings.followSystemDock && settings.hideOnNativeDockScreen)
-                ? SystemDockPreferences.nativeDockScreenNumbers(for: NSScreen.screens, edge: runtime.edge)
+            // The macOS Dock lives on some display regardless of whether MoreDock is
+            // "following" it, so hiding on that display must not depend on
+            // followSystemDock — otherwise editing an appearance control (which turns
+            // followSystemDock off) makes MoreDock draw a duplicate dock on the main
+            // display. Detect using the real Dock orientation.
+            cachedNativeDockScreens = settings.hideOnNativeDockScreen
+                ? SystemDockPreferences.nativeDockScreenNumbers(for: NSScreen.screens, edge: SystemDockPreferences.nativeEdge)
                 : []
         }
         let runtimeSettings = cachedRuntimeSettings ?? SystemDockPreferences.runtimeSettings(fallback: settings)
@@ -300,10 +305,12 @@ final class DockController {
             return "\(displayID)=\(edge.rawValue)"
         }
         .sorted()
-        let signature = placements.joined(separator: ",")
+        let hiddenList = nativeDockScreenNumbers.map(\.stringValue).sorted().joined(separator: ",")
+        let signature = placements.joined(separator: ",") + "|hidden:" + hiddenList
         if signature != lastPanelSignature {
             lastPanelSignature = signature
-            mdLog("Dock panels on \(targetNumbers.count) display(s): \(placements.isEmpty ? "none" : placements.joined(separator: ", ")).")
+            let hiddenNote = hiddenList.isEmpty ? "" : " (macOS Dock display hidden: \(hiddenList))"
+            mdLog("Dock panels on \(targetNumbers.count) display(s): \(placements.isEmpty ? "none" : placements.joined(separator: ", "))\(hiddenNote).")
         }
 
         for (number, panel) in panels where !targetNumbers.contains(number) {

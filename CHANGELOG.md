@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.3.2
+
+- 🚫 Fixes a duplicate dock appearing on the main display (over the real macOS Dock) after editing an appearance control. "Hide on Dock display" no longer depends on "Follow native Dock", so the display that owns the macOS Dock is always excluded (detected using the real Dock orientation). This also stabilises docks that would intermittently disappear.
+- 🧭 The Settings "Hide on Dock display" toggle is always editable, and the main display correctly shows the "stays hidden" note whenever the macOS Dock is there.
+- 🔎 Logs which display is being hidden as the macOS Dock display, to diagnose show/hide issues.
+
 ## 0.3.1
 
 - 🎯 Fixes Clicked Display placing the window on the wrong screen / a display junction instead of centered on the clicked display. The AppKit→Accessibility coordinate conversion now references the primary display's top edge rather than the union of all displays, which had offset the window by the height of any monitor sitting above the primary.
