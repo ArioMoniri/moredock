@@ -91,11 +91,18 @@ enum Diagnostics {
         Bundle.main.bundlePath
     }
 
+    /// True for a local `swift build` / Xcode build. These are ad-hoc signed and
+    /// their signature changes on every rebuild, so an Accessibility grant has to be
+    /// re-done after each build. Only the signed release keeps the grant permanently.
+    static var isDevBuild: Bool {
+        bundlePath.contains("/.build/") || bundlePath.contains("/DerivedData/")
+    }
+
     static func summaryLine() -> String {
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         let trusted = AccessibilityWindowMover.isTrusted(prompt: false)
-        return "v\(version) (\(build)) · accessibility=\(trusted ? "granted" : "not granted") · translocated=\(isTranslocated) · path=\(bundlePath)"
+        return "v\(version) (\(build)) · accessibility=\(trusted ? "granted" : "not granted") · translocated=\(isTranslocated) · devBuild=\(isDevBuild) · path=\(bundlePath)"
     }
 
     @MainActor
@@ -103,6 +110,8 @@ enum Diagnostics {
         mdLog("MoreDock started · \(summaryLine())")
         if isTranslocated {
             mdLog("Running from a translocated/temporary path. Move MoreDock into /Applications so Accessibility permission persists.", level: .warn)
+        } else if isDevBuild {
+            mdLog("Running a local dev build from .build. After granting Accessibility, quit and reopen MoreDock. Each rebuild changes the signature and needs a re-grant — the signed release keeps it permanently.", level: .warn)
         }
     }
 }

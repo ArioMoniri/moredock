@@ -212,32 +212,62 @@ private struct DisplayArrangementSection: View {
         let offsetX = inset + (availableWidth - union.width * scale) / 2
         let offsetY = inset + (availableHeight - union.height * scale) / 2
         let primaryID = CGMainDisplayID()
+        let globalEdge = DockPlacement.globalEdge(for: settings)
+
+        // Number externals the same way the Per-Display list does.
+        var externalIndex = 0
+        let rows: [ArrangementRow] = screens.compactMap { screen in
+            guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
+                return nil
+            }
+            let isPrimary = number.uint32Value == primaryID
+            let label: String
+            if isPrimary {
+                label = "Main"
+            } else {
+                externalIndex += 1
+                label = "Ext \(externalIndex)"
+            }
+            let displaySettings = settings.settingsForDisplay(number.stringValue)
+            let edge = DockPlacement.resolvedEdge(
+                globalEdge: globalEdge,
+                displaySettings: displaySettings,
+                screen: screen,
+                allScreens: screens
+            )
+            return ArrangementRow(
+                id: number.stringValue,
+                frame: screen.frame,
+                label: label,
+                edge: edge,
+                enabled: displaySettings.isEnabled
+            )
+        }
 
         return ZStack(alignment: .topLeading) {
-            ForEach(Array(screens.enumerated()), id: \.offset) { index, screen in
-                let frame = screen.frame
-                let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
-                let displayID = number?.stringValue ?? "\(index)"
-                let displaySettings = settings.settingsForDisplay(displayID)
-                let isPrimary = number?.uint32Value == primaryID
-                let edge = displaySettings.followsGlobalPlacement ? settings.edge : displaySettings.edge
-                let tileWidth = max(frame.width * scale, 10)
-                let tileHeight = max(frame.height * scale, 10)
-
+            ForEach(rows) { row in
                 DisplayTile(
-                    width: tileWidth,
-                    height: tileHeight,
-                    label: isPrimary ? "Main" : "Ext \(index)",
-                    edge: edge,
-                    enabled: displaySettings.isEnabled,
+                    width: max(row.frame.width * scale, 10),
+                    height: max(row.frame.height * scale, 10),
+                    label: row.label,
+                    edge: row.edge,
+                    enabled: row.enabled,
                     animate: animate
                 )
                 .offset(
-                    x: offsetX + (frame.minX - union.minX) * scale,
-                    y: offsetY + (union.maxY - frame.maxY) * scale
+                    x: offsetX + (row.frame.minX - union.minX) * scale,
+                    y: offsetY + (union.maxY - row.frame.maxY) * scale
                 )
             }
         }
+    }
+
+    private struct ArrangementRow: Identifiable {
+        let id: String
+        let frame: NSRect
+        let label: String
+        let edge: DockEdge
+        let enabled: Bool
     }
 }
 
@@ -656,6 +686,9 @@ private struct SettingsAccessibilityRow: View {
         }
         if Diagnostics.isTranslocated {
             return "MoreDock is running from a temporary copy, so permission will not stick. Move it to /Applications, then grant access."
+        }
+        if Diagnostics.isDevBuild {
+            return "This is a local dev build. After granting, quit and reopen MoreDock. Each rebuild changes the signature and needs a re-grant \u{2014} the signed release keeps it permanently."
         }
         return "Needed for Clicked Display. If you already granted it but it keeps asking, remove MoreDock from the list and add it again."
     }

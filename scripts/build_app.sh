@@ -77,4 +77,17 @@ if [[ -d "${SOURCE_RESOURCES_DIR}" ]]; then
   done < <(find "${SOURCE_RESOURCES_DIR}" -mindepth 1 -print0)
 fi
 
+# Code-sign the assembled bundle. macOS will not retain an Accessibility (TCC)
+# grant for an unsigned app, which makes it re-prompt on every launch. Ad-hoc
+# signing lets a local build keep the grant for the life of that build; the
+# release pipeline re-signs with the Developer ID identity for a permanent grant.
+if command -v codesign >/dev/null 2>&1; then
+  if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
+    codesign --force --deep --options runtime --timestamp --sign "${CODESIGN_IDENTITY}" "${APP_PATH}"
+  else
+    codesign --force --deep --sign - "${APP_PATH}"
+  fi
+  xattr -cr "${APP_PATH}" 2>/dev/null || true
+fi
+
 echo "Created ${APP_PATH}"

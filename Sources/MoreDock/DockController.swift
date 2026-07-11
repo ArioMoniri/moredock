@@ -78,12 +78,25 @@ final class DockController {
             }
         }
 
+        logScreens()
         refreshAll()
     }
 
     func refreshAll() {
         refreshItems()
         syncPanels()
+    }
+
+    private func logScreens() {
+        let primary = CGMainDisplayID()
+        let description = NSScreen.screens.map { screen -> String in
+            let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
+            let isMain = number?.uint32Value == primary
+            let frame = screen.frame
+            return "\(isMain ? "Main" : "Ext")#\(number?.stringValue ?? "?")[x\(Int(frame.minX)),y\(Int(frame.minY)),\(Int(frame.width))x\(Int(frame.height))]"
+        }
+        .joined(separator: " ")
+        mdLog("Screens: \(description)")
     }
 
     private func tick() {
@@ -173,14 +186,22 @@ final class DockController {
 
         let targetNumbers = Set(targetScreens.compactMap(\.screenNumber))
 
-        let signature = targetNumbers
-            .map(\.stringValue)
-            .sorted()
-            .joined(separator: ",")
+        let globalEdge = DockPlacement.globalEdge(for: settings)
+        let placements = targetScreens.compactMap { screen -> String? in
+            guard let displayID = screen.screenNumber?.stringValue else { return nil }
+            let edge = DockPlacement.resolvedEdge(
+                globalEdge: globalEdge,
+                displaySettings: settings.settingsForDisplay(displayID),
+                screen: screen,
+                allScreens: NSScreen.screens
+            )
+            return "\(displayID)=\(edge.rawValue)"
+        }
+        .sorted()
+        let signature = placements.joined(separator: ",")
         if signature != lastPanelSignature {
             lastPanelSignature = signature
-            let names = targetNumbers.map(\.stringValue).sorted().joined(separator: ", ")
-            mdLog("Dock panels active on \(targetNumbers.count) display(s)\(names.isEmpty ? "" : ": \(names)").")
+            mdLog("Dock panels on \(targetNumbers.count) display(s): \(placements.isEmpty ? "none" : placements.joined(separator: ", ")).")
         }
 
         for (number, panel) in panels where !targetNumbers.contains(number) {
@@ -206,10 +227,6 @@ final class DockController {
         let displaySettings = self.settings.settingsForDisplay(displayID)
         var adjusted = settings
 
-        if !displaySettings.followsGlobalPlacement {
-            adjusted.edge = displaySettings.edge
-        }
-
         if !displaySettings.followsGlobalAppearance {
             adjusted.iconSize = displaySettings.iconSize
             adjusted.opacity = displaySettings.opacity
@@ -219,42 +236,17 @@ final class DockController {
         }
 
         adjusted.avoidDisplayJunctions = displaySettings.avoidDisplayJunctions
-
-        guard adjusted.avoidDisplayJunctions else { return adjusted }
-        guard isEdgeShared(adjusted.edge, of: screen, with: allScreens) else { return adjusted }
-
-        switch adjusted.edge {
-        case .left:
-            adjusted.edge = isEdgeShared(.right, of: screen, with: allScreens) ? .bottom : .right
-        case .right:
-            adjusted.edge = isEdgeShared(.left, of: screen, with: allScreens) ? .bottom : .left
-        case .bottom:
-            adjusted.edge = .bottom
-        }
+        adjusted.edge = DockPlacement.resolvedEdge(
+            globalEdge: settings.edge,
+            displaySettings: displaySettings,
+            screen: screen,
+            allScreens: allScreens
+        )
         return adjusted
     }
 
-    private func isEdgeShared(_ edge: DockEdge, of screen: NSScreen, with screens: [NSScreen]) -> Bool {
-        let tolerance: CGFloat = 2
-        let frame = screen.frame
-        return screens.contains { other in
-            guard other != screen else { return false }
-            let otherFrame = other.frame
-            let verticalOverlap = frame.minY < otherFrame.maxY - tolerance && frame.maxY > otherFrame.minY + tolerance
-            let horizontalOverlap = frame.minX < otherFrame.maxX - tolerance && frame.maxX > otherFrame.minX + tolerance
-
-            switch edge {
-            case .left:
-                return verticalOverlap && abs(frame.minX - otherFrame.maxX) <= tolerance
-            case .right:
-                return verticalOverlap && abs(frame.maxX - otherFrame.minX) <= tolerance
-            case .bottom:
-                return horizontalOverlap && abs(frame.minY - otherFrame.maxY) <= tolerance
-            }
-        }
-    }
-
     @objc private func screenParametersChanged() {
+        logScreens()
         refreshAll()
     }
 }

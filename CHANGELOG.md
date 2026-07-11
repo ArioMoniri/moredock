@@ -1,12 +1,17 @@
 # Release Notes
 
+## 0.2.1
+
+- 🔏 Code-signs the app in `build_app.sh` (ad-hoc for local builds, Developer ID in the release): unsigned apps cannot retain an Accessibility grant, which was the real cause of the endless re-prompt on local `.build` runs.
+- 🔐 Detects and explains the "granted but still asks" Accessibility cases — translocated/temporary copies *and* local dev builds — in the Settings note and the logs (move to /Applications for a permanent grant; quit and reopen after granting a dev build).
+- 📐 Makes the Settings "Display Layout" preview show each dock's **resolved** edge (after junction avoidance and native orientation), so the map matches where docks actually appear; also logs each display's frame and resolved edge for diagnosis.
+
 ## 0.2.0
 
 - 📄 Adds the Apache License 2.0 (© Ariorad Moniri) plus a NOTICE file.
 - 🧬 Extra docks now mirror the native Dock: Finder first, pinned apps in Dock order, then running (unpinned) apps, a separator, pinned folders/stacks (Downloads, etc.), and Trash last.
 - 🟢 Adds running-indicator dots under open apps and a native-style rounded-rectangle dock shape.
 - 🪵 Adds an in-app Log/Diagnostics reader (menu bar ▸ Show Logs, or Settings ▸ Logs) that records dock refreshes, panel activity, and Accessibility events, with Copy All for bug reports.
-- 🔐 Explains and detects the "granted but still asks" Accessibility case: when MoreDock runs from a translocated/temporary copy the permission cannot persist, so Settings and the logs now tell you to move it to /Applications and re-add it.
 - 🗺️ Adds an animated Display Layout map in Settings that shows every screen's position and the glowing dock edge for each one.
 - 🎛️ Every appearance control is now always editable: changing a locked control detaches it from "Follow native Dock" (globally) or from global placement/appearance (per display) so the change actually applies instead of being greyed out.
 - 🖥️ Per-Display Docks now list **every** display (including the main one), not just external ones, each with its own show/hide, location, size, opacity, auto-hide, magnification, and junction settings.
