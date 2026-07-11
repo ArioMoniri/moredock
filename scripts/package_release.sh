@@ -22,7 +22,9 @@ SPARKLE_BIN_DIR="${REPO_ROOT}/.build/artifacts/sparkle/Sparkle/bin"
 rm -rf -- "${DIST_DIR}"
 mkdir -p -- "${DIST_DIR}"
 
-"${SCRIPT_DIR}/build_app.sh"
+# This script signs the bundle itself below, so tell build_app.sh not to sign
+# too (a double sign races the hdiutil DMG step with "Resource busy").
+SKIP_BUILD_APP_SIGN=1 "${SCRIPT_DIR}/build_app.sh"
 
 if command -v codesign >/dev/null 2>&1; then
   SIGN_ARGS=(--force --deep)
