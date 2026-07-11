@@ -9,6 +9,8 @@ struct DockAppItem: Identifiable, Equatable {
         case application
         case folder
         case file
+        case trash
+        case separator
     }
 
     let id: String
@@ -21,7 +23,22 @@ struct DockAppItem: Identifiable, Equatable {
     let isRunning: Bool
 
     static func == (lhs: DockAppItem, rhs: DockAppItem) -> Bool {
-        lhs.id == rhs.id
+        lhs.id == rhs.id && lhs.isRunning == rhs.isRunning
+    }
+
+    /// A thin divider tile that mirrors the native Dock separator between apps
+    /// and the folders/Trash section.
+    static func separator(id: String) -> DockAppItem {
+        DockAppItem(
+            id: id,
+            name: "",
+            bundleIdentifier: nil,
+            url: nil,
+            icon: NSImage(),
+            processIdentifier: nil,
+            kind: .separator,
+            isRunning: false
+        )
     }
 }
 
@@ -33,6 +50,7 @@ final class DockController {
     private var cancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
     private var appRefreshCounter = 0
+    private var lastPanelSignature = ""
 
     init(settings: SettingsStore) {
         self.settings = settings
@@ -78,39 +96,55 @@ final class DockController {
     }
 
     private func refreshItems() {
-        let workspace = NSWorkspace.shared
-        let running = workspace.runningApplications
+        // Mirror the native Dock layout as closely as possible:
+        //   Finder · pinned apps (in Dock order) · running (unpinned) apps ·
+        //   separator · pinned folders/stacks (Downloads, etc.) · Trash
+        let pinnedApps = SystemDockPreferences.persistentApps()
+        let pinnedOthers = SystemDockPreferences.persistentOthers()
+        let pinnedBundleIDs = Set(pinnedApps.compactMap(\.bundleIdentifier))
+
+        let runningItems: [DockAppItem] = NSWorkspace.shared.runningApplications
             .filter { app in
                 app.activationPolicy == .regular && !app.isTerminated
             }
-            .sorted { lhs, rhs in
-                (lhs.localizedName ?? "") < (rhs.localizedName ?? "")
+            .compactMap { app -> DockAppItem? in
+                let bundleID = app.bundleIdentifier
+                if bundleID == "com.apple.finder" { return nil }
+                if let bundleID, pinnedBundleIDs.contains(bundleID) { return nil }
+                let identifier = bundleID ?? "pid-\(app.processIdentifier)"
+                let name = app.localizedName ?? identifier
+                let icon = app.icon ?? NSImage(systemSymbolName: "app.dashed", accessibilityDescription: name) ?? NSImage()
+                return DockAppItem(
+                    id: identifier,
+                    name: name,
+                    bundleIdentifier: bundleID,
+                    url: app.bundleURL,
+                    icon: icon,
+                    processIdentifier: app.processIdentifier,
+                    kind: .application,
+                    isRunning: true
+                )
             }
 
-        let runningItems = running.map { app in
-            let identifier = app.bundleIdentifier ?? "pid-\(app.processIdentifier)"
-            let name = app.localizedName ?? identifier
-            let icon = app.icon ?? NSImage(systemSymbolName: "app.dashed", accessibilityDescription: name) ?? NSImage()
-            return DockAppItem(
-                id: identifier,
-                name: name,
-                bundleIdentifier: app.bundleIdentifier,
-                url: app.bundleURL,
-                icon: icon,
-                processIdentifier: app.processIdentifier,
-                kind: .application,
-                isRunning: true
-            )
-        }
+        var items: [DockAppItem] = []
+        items.append(SystemDockPreferences.finderItem())
+        items.append(contentsOf: pinnedApps.filter { $0.bundleIdentifier != "com.apple.finder" })
+        items.append(contentsOf: runningItems)
+        items.append(.separator(id: "moredock.separator.apps"))
+        items.append(contentsOf: pinnedOthers)
+        items.append(SystemDockPreferences.trashItem())
 
         var seen = Set<String>()
-        var items: [DockAppItem] = []
-        for item in SystemDockPreferences.persistentDockItems() + runningItems {
-            guard !seen.contains(item.id) else { continue }
+        let deduped = items.filter { item in
+            guard !seen.contains(item.id) else { return false }
             seen.insert(item.id)
-            items.append(item)
+            return true
         }
-        dockItems = items
+
+        if deduped.map(\.id) != dockItems.map(\.id) {
+            mdLog("Dock items: \(deduped.count) tiles (\(pinnedApps.count) pinned apps, \(runningItems.count) running, \(pinnedOthers.count) folders/stacks).")
+        }
+        dockItems = deduped
     }
 
     private func syncPanels() {
@@ -138,6 +172,16 @@ final class DockController {
         }
 
         let targetNumbers = Set(targetScreens.compactMap(\.screenNumber))
+
+        let signature = targetNumbers
+            .map(\.stringValue)
+            .sorted()
+            .joined(separator: ",")
+        if signature != lastPanelSignature {
+            lastPanelSignature = signature
+            let names = targetNumbers.map(\.stringValue).sorted().joined(separator: ", ")
+            mdLog("Dock panels active on \(targetNumbers.count) display(s)\(names.isEmpty ? "" : ": \(names)").")
+        }
 
         for (number, panel) in panels where !targetNumbers.contains(number) {
             panel.close()

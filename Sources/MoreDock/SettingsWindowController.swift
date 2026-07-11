@@ -85,6 +85,7 @@ struct SettingsView: View {
 
                                     SettingsUpdateRow(onCheckForUpdates: onCheckForUpdates)
                                     SettingsAccessibilityRow()
+                                    SettingsLogsRow()
                                 }
                             }
 
@@ -625,9 +626,10 @@ private struct SettingsAccessibilityRow: View {
                 Text("Accessibility")
                     .font(.callout.weight(.medium))
                     .lineLimit(1)
-                Text(isTrusted ? "Granted \u{2014} Clicked Display is ready." : "Needed for Clicked Display.")
+                Text(statusText)
                     .font(.caption)
-                    .foregroundStyle(isTrusted ? Color.green : Color.secondary)
+                    .foregroundStyle(isTrusted ? Color.green : (Diagnostics.isTranslocated ? Color.orange : Color.secondary))
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer()
             if isTrusted {
@@ -646,6 +648,38 @@ private struct SettingsAccessibilityRow: View {
         .onReceive(pollTimer) { _ in
             isTrusted = AccessibilityWindowMover.isTrusted(prompt: false)
         }
+    }
+
+    private var statusText: String {
+        if isTrusted {
+            return "Granted \u{2014} Clicked Display is ready."
+        }
+        if Diagnostics.isTranslocated {
+            return "MoreDock is running from a temporary copy, so permission will not stick. Move it to /Applications, then grant access."
+        }
+        return "Needed for Clicked Display. If you already granted it but it keeps asking, remove MoreDock from the list and add it again."
+    }
+}
+
+private struct SettingsLogsRow: View {
+    @State private var controller: LogWindowController?
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            Text("Logs")
+                .font(.callout.weight(.medium))
+                .lineLimit(1)
+            Spacer()
+            Button("Open") {
+                if controller == nil {
+                    controller = LogWindowController()
+                }
+                NSApp.activate(ignoringOtherApps: true)
+                controller?.showWindow(nil)
+            }
+            .controlSize(.small)
+        }
+        .frame(minHeight: 30)
     }
 }
 

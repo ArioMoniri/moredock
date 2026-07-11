@@ -12,10 +12,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         userDriverDelegate: nil
     )
     private var settingsWindowController: SettingsWindowController?
+    private var logWindowController: LogWindowController?
     private var statusItem: NSStatusItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        Diagnostics.logStartup()
         configureStatusItem()
         dockController.start()
 
@@ -51,6 +53,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         updateItem.target = self
         menu.addItem(updateItem)
 
+        let logsItem = NSMenuItem(title: "Show Logs...", action: #selector(showLogs), keyEquivalent: "l")
+        logsItem.target = self
+        menu.addItem(logsItem)
+
         menu.addItem(NSMenuItem.separator())
         let quitItem = NSMenuItem(title: "Quit MoreDock", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
@@ -78,6 +84,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func refreshNow() {
         dockController.refreshAll()
+    }
+
+    @objc private func showLogs() {
+        if logWindowController == nil {
+            logWindowController = LogWindowController()
+        }
+        NSApp.activate(ignoringOtherApps: true)
+        logWindowController?.showWindow(nil)
     }
 
     @objc private func checkForUpdates(_ sender: NSMenuItem) {

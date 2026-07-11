@@ -157,7 +157,9 @@ struct SnapshotSettings: Equatable {
     var activationDisplayMode: ActivationDisplayMode = .native
     var cornerRadius: Double {
         let thickness = iconSize + max(9, iconSize * 0.24) * 2
-        return thickness / 2
+        // Cap the radius so a long dock reads as a rounded rectangle like the
+        // native Dock instead of a full stadium/pill.
+        return min(thickness / 2, 26)
     }
 
     init() {}
@@ -254,6 +256,14 @@ private struct DockIconButton: View {
     @State private var isHovering = false
 
     var body: some View {
+        if item.kind == .separator {
+            separator
+        } else {
+            iconButton
+        }
+    }
+
+    private var iconButton: some View {
         Button {
             activate()
         } label: {
@@ -262,6 +272,7 @@ private struct DockIconButton: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: iconSize, height: iconSize)
                 .padding(2)
+                .overlay(alignment: dotAlignment) { runningDot }
                 .scaleEffect(isHovering && settings.magnification ? 1.18 : 1.0)
                 .animation(.spring(response: 0.22, dampingFraction: 0.72), value: isHovering)
         }
@@ -269,6 +280,39 @@ private struct DockIconButton: View {
         .help(item.name)
         .onHover { isHovering = $0 }
         .accessibilityLabel(item.name)
+    }
+
+    @ViewBuilder
+    private var runningDot: some View {
+        if item.isRunning && item.kind == .application && item.bundleIdentifier != "com.apple.finder" {
+            Circle()
+                .fill(.white.opacity(0.85))
+                .frame(width: max(3, iconSize * 0.1), height: max(3, iconSize * 0.1))
+        }
+    }
+
+    private var dotAlignment: Alignment {
+        switch settings.edge {
+        case .bottom: .bottom
+        case .left: .trailing
+        case .right: .leading
+        }
+    }
+
+    private var separator: some View {
+        let isBottom = settings.edge == .bottom
+        let lineThickness: CGFloat = 1
+        let lineLength = baseIconSize * 0.6
+        return RoundedRectangle(cornerRadius: lineThickness / 2, style: .continuous)
+            .fill(.white.opacity(0.28))
+            .frame(
+                width: isBottom ? lineThickness : lineLength,
+                height: isBottom ? lineLength : lineThickness
+            )
+            .frame(
+                width: isBottom ? baseIconSize * 0.5 : baseIconSize,
+                height: isBottom ? baseIconSize : baseIconSize * 0.5
+            )
     }
 
     private var iconSize: CGFloat {

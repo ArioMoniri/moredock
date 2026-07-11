@@ -1,8 +1,12 @@
 # Release Notes
 
-## Unreleased
+## 0.2.0
 
 - 📄 Adds the Apache License 2.0 (© Ariorad Moniri) plus a NOTICE file.
+- 🧬 Extra docks now mirror the native Dock: Finder first, pinned apps in Dock order, then running (unpinned) apps, a separator, pinned folders/stacks (Downloads, etc.), and Trash last.
+- 🟢 Adds running-indicator dots under open apps and a native-style rounded-rectangle dock shape.
+- 🪵 Adds an in-app Log/Diagnostics reader (menu bar ▸ Show Logs, or Settings ▸ Logs) that records dock refreshes, panel activity, and Accessibility events, with Copy All for bug reports.
+- 🔐 Explains and detects the "granted but still asks" Accessibility case: when MoreDock runs from a translocated/temporary copy the permission cannot persist, so Settings and the logs now tell you to move it to /Applications and re-add it.
 - 🗺️ Adds an animated Display Layout map in Settings that shows every screen's position and the glowing dock edge for each one.
 - 🎛️ Every appearance control is now always editable: changing a locked control detaches it from "Follow native Dock" (globally) or from global placement/appearance (per display) so the change actually applies instead of being greyed out.
 - 🖥️ Per-Display Docks now list **every** display (including the main one), not just external ones, each with its own show/hide, location, size, opacity, auto-hide, magnification, and junction settings.
@@ -11,7 +15,6 @@
 - 🖥️ Fixes the duplicate dock that could overlap the real macOS Dock on the main display by flipping Quartz→Cocoa coordinates when locating the native Dock and excluding **all** displays that host it.
 - 🧊 Insets extra docks a few points off shared display seams so their glass no longer bleeds onto the neighbouring monitor.
 - ✨ Gives the Settings window a richer liquid-glass backdrop.
-- 🕵️ Adds a detective (Murdoch-inspired) app-icon vector source, README hero, and an icon-generation script.
 
 ## 0.1.9
 

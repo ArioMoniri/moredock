@@ -1,12 +1,8 @@
-# MoreDock 🧊🕵️
-
-<p align="center">
-  <img src="docs/images/moredock-hero.svg" alt="MoreDock — a Dock for every display" width="820">
-</p>
+# MoreDock 🧊
 
 MoreDock is a native macOS menu-bar app that adds Dock-style launchers to the displays where macOS does not keep the system Dock.
 
-It follows your real Dock settings, stays out of the main Dock’s way, and runs without adding another icon to the macOS Dock. The detective mark (a nod to *Murdoch*) is a reminder of what it does under the hood: it investigates where your windows are and puts them where you clicked.
+It follows your real Dock settings, stays out of the main Dock’s way, and runs without adding another icon to the macOS Dock.
 
 <p align="center">
   <a href="https://github.com/ArioMoniri/moredock/releases/latest">
@@ -111,12 +107,6 @@ Package locally:
 
 ```sh
 ./scripts/package_release.sh
-```
-
-Regenerate the app icon from `Resources/AppIcon.svg` (macOS, needs `librsvg` or `inkscape`):
-
-```sh
-./scripts/generate_icon.sh
 ```
 
 Release notes live in [CHANGELOG.md](CHANGELOG.md).

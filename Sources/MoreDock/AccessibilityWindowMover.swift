@@ -126,10 +126,15 @@ final class AccessibilityMoveCoordinator {
         guard !frame.isEmpty else { return }
 
         if AccessibilityWindowMover.isTrusted(prompt: false) {
+            mdLog("Clicked Display: moving windows of pid \(pid) onto the clicked screen.")
             performMoves(pid: pid, frame: frame)
             return
         }
 
+        mdLog("Clicked Display: Accessibility not granted yet — queuing move for pid \(pid).", level: .warn)
+        if Diagnostics.isTranslocated {
+            mdLog("Accessibility will not persist while MoreDock runs from a translocated copy. Move it to /Applications, then remove and re-add it in Privacy & Security ▸ Accessibility.", level: .error)
+        }
         pending[pid] = Request(frame: frame, attemptsLeft: maxPollAttempts)
         promptForAccessibilityIfNeeded()
         startPolling()
@@ -149,6 +154,7 @@ final class AccessibilityMoveCoordinator {
             return
         }
         lastPromptAt = now
+        mdLog("Requesting Accessibility permission (system prompt).")
         _ = AccessibilityWindowMover.isTrusted(prompt: true)
     }
 
@@ -168,6 +174,9 @@ final class AccessibilityMoveCoordinator {
         }
 
         let trusted = AccessibilityWindowMover.isTrusted(prompt: false)
+        if trusted {
+            mdLog("Accessibility granted — applying \(pending.count) queued Clicked Display move(s).")
+        }
         for (pid, request) in pending {
             guard NSRunningApplication(processIdentifier: pid) != nil else {
                 pending[pid] = nil
@@ -182,7 +191,12 @@ final class AccessibilityMoveCoordinator {
 
             var next = request
             next.attemptsLeft -= 1
-            pending[pid] = next.attemptsLeft <= 0 ? nil : next
+            if next.attemptsLeft <= 0 {
+                pending[pid] = nil
+                mdLog("Gave up moving pid \(pid): Accessibility still not granted. See the Accessibility note in Settings.", level: .warn)
+            } else {
+                pending[pid] = next
+            }
         }
 
         if pending.isEmpty {

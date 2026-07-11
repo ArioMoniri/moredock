@@ -126,9 +126,49 @@ enum SystemDockPreferences {
         } ?? screens.first
     }
 
-    static func persistentDockItems() -> [DockAppItem] {
+    static func persistentApps() -> [DockAppItem] {
         synchronize()
-        return persistentItems(for: "persistent-apps") + persistentItems(for: "persistent-others")
+        return persistentItems(for: "persistent-apps")
+    }
+
+    static func persistentOthers() -> [DockAppItem] {
+        synchronize()
+        return persistentItems(for: "persistent-others")
+    }
+
+    /// The Finder tile, which the native Dock always shows first.
+    static func finderItem() -> DockAppItem {
+        let url = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app")
+        let pid = NSRunningApplication
+            .runningApplications(withBundleIdentifier: "com.apple.finder")
+            .first?
+            .processIdentifier
+        return DockAppItem(
+            id: "com.apple.finder",
+            name: "Finder",
+            bundleIdentifier: "com.apple.finder",
+            url: url,
+            icon: NSWorkspace.shared.icon(forFile: url.path),
+            processIdentifier: pid,
+            kind: .application,
+            isRunning: pid != nil
+        )
+    }
+
+    /// The Trash tile, which the native Dock always shows last.
+    static func trashItem() -> DockAppItem {
+        let trashURL = (try? FileManager.default.url(for: .trashDirectory, in: .userDomainMask, appropriateFor: nil, create: false))
+            ?? URL(fileURLWithPath: NSString(string: "~/.Trash").expandingTildeInPath)
+        return DockAppItem(
+            id: "moredock.trash",
+            name: "Trash",
+            bundleIdentifier: nil,
+            url: trashURL,
+            icon: NSWorkspace.shared.icon(forFile: trashURL.path),
+            processIdentifier: nil,
+            kind: .trash,
+            isRunning: false
+        )
     }
 
     static var nativeEdge: DockEdge {
