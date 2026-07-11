@@ -148,6 +148,30 @@ final class SettingsStore: ObservableObject {
         } else {
             customDockApps = [:]
         }
+        migrateStuckAutoHide()
+    }
+
+    /// One-time migration: earlier builds mirrored the native Dock's auto-hide
+    /// setting into MoreDock, which left many users with `autoHide` stored as
+    /// `true`. That parked the extra docks off-screen at alpha 0 so they never
+    /// appeared. Auto-hide is now an explicit, default-off feature, so force the
+    /// stored global and per-display values back to `false` exactly once. Users
+    /// who genuinely want auto-hide can re-enable it from Settings afterwards.
+    private func migrateStuckAutoHide() {
+        guard !defaults.bool(forKey: Keys.didResetAutoHideV37) else { return }
+        defaults.set(true, forKey: Keys.didResetAutoHideV37)
+
+        if autoHide {
+            autoHide = false
+        }
+        let cleared = displaySettings.mapValues { entry -> DisplayDockSettings in
+            var copy = entry
+            copy.autoHide = false
+            return copy
+        }
+        if cleared != displaySettings {
+            displaySettings = cleared
+        }
     }
 
     private let defaults: UserDefaults
@@ -249,5 +273,6 @@ final class SettingsStore: ObservableObject {
         static let avoidDisplayJunctions = "avoidDisplayJunctions"
         static let displaySettings = "displaySettings"
         static let customDockApps = "customDockApps"
+        static let didResetAutoHideV37 = "didResetAutoHideV37"
     }
 }
