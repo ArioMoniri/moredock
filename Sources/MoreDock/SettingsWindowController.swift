@@ -30,9 +30,26 @@ struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
     var onCheckForUpdates: (() -> Void)?
 
+    /// A binding that applies a value immediately and detaches from "Follow native
+    /// Dock" so the edit actually takes effect instead of being overridden by the
+    /// system Dock. Keeps every appearance control live and editable.
+    private func detach<Value>(_ keyPath: ReferenceWritableKeyPath<SettingsStore, Value>) -> Binding<Value> {
+        Binding {
+            settings[keyPath: keyPath]
+        } set: { newValue in
+            if settings.followSystemDock {
+                settings.followSystemDock = false
+            }
+            settings[keyPath: keyPath] = newValue
+        }
+    }
+
     var body: some View {
         ZStack {
             SettingsVisualEffect()
+                .ignoresSafeArea()
+
+            LiquidGlassBackdrop()
                 .ignoresSafeArea()
 
             ScrollView {
@@ -71,6 +88,8 @@ struct SettingsView: View {
                                 }
                             }
 
+                            DisplayArrangementSection(settings: settings)
+
                             DisplaySettingsSection(settings: settings)
                         }
                         .frame(maxWidth: .infinity, alignment: .top)
@@ -79,7 +98,7 @@ struct SettingsView: View {
                             SettingsSection("Appearance") {
                                 VStack(alignment: .leading, spacing: 11) {
                                     SettingsPickerRow("Edge") {
-                                        Picker("Edge", selection: $settings.edge) {
+                                        Picker("Edge", selection: detach(\.edge)) {
                                             ForEach(DockEdge.allCases) { edge in
                                                 Text(edge.title).tag(edge)
                                             }
@@ -88,12 +107,17 @@ struct SettingsView: View {
                                         .pickerStyle(.segmented)
                                         .frame(width: 190)
                                     }
-                                    .disabled(settings.followSystemDock)
 
-                                    SettingsSliderRow(title: "Icon size", value: $settings.iconSize, range: 32...72, step: 2, suffix: "")
-                                        .disabled(settings.followSystemDock)
+                                    SettingsSliderRow(title: "Icon size", value: detach(\.iconSize), range: 32...72, step: 2, suffix: "")
 
                                     SettingsSliderRow(title: "Opacity", value: $settings.opacity, range: 0.45...1.0, step: 0.01, suffix: "%")
+
+                                    if settings.followSystemDock {
+                                        Text("Editing any control below turns off \u{201C}Follow native Dock\u{201D} so your change sticks.")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
                                 }
                             }
 
@@ -102,10 +126,8 @@ struct SettingsView: View {
                             SettingsSection("Liquid Glass") {
                                 VStack(spacing: 11) {
                                     SettingsToggleRow("Glass material", isOn: $settings.liquidGlass)
-                                    SettingsToggleRow("Magnification", isOn: $settings.magnification)
-                                        .disabled(settings.followSystemDock)
-                                    SettingsToggleRow("Auto-hide", isOn: $settings.autoHide)
-                                        .disabled(settings.followSystemDock)
+                                    SettingsToggleRow("Magnification", isOn: detach(\.magnification))
+                                    SettingsToggleRow("Auto-hide", isOn: detach(\.autoHide))
                                 }
                             }
                         }
@@ -152,20 +174,142 @@ struct SettingsView: View {
     }
 }
 
+private struct DisplayArrangementSection: View {
+    @ObservedObject var settings: SettingsStore
+    @State private var animate = false
+
+    var body: some View {
+        SettingsSection("Display Layout") {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Live map of every display. The glowing edge shows where each MoreDock sits \u{2014} change a display\u{2019}s Location below to move it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                GeometryReader { geo in
+                    arrangement(in: geo.size)
+                }
+                .frame(height: 150)
+                .frame(maxWidth: .infinity)
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
+                animate = true
+            }
+        }
+    }
+
+    private func arrangement(in size: CGSize) -> some View {
+        let screens = NSScreen.screens
+        let frames = screens.map(\.frame)
+        let union = frames.dropFirst().reduce(frames.first ?? .zero) { $0.union($1) }
+        let inset: CGFloat = 12
+        let availableWidth = max(size.width - inset * 2, 1)
+        let availableHeight = max(size.height - inset * 2, 1)
+        let scale = min(availableWidth / max(union.width, 1), availableHeight / max(union.height, 1))
+        let offsetX = inset + (availableWidth - union.width * scale) / 2
+        let offsetY = inset + (availableHeight - union.height * scale) / 2
+        let primaryID = CGMainDisplayID()
+
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(screens.enumerated()), id: \.offset) { index, screen in
+                let frame = screen.frame
+                let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
+                let displayID = number?.stringValue ?? "\(index)"
+                let displaySettings = settings.settingsForDisplay(displayID)
+                let isPrimary = number?.uint32Value == primaryID
+                let edge = displaySettings.followsGlobalPlacement ? settings.edge : displaySettings.edge
+                let tileWidth = max(frame.width * scale, 10)
+                let tileHeight = max(frame.height * scale, 10)
+
+                DisplayTile(
+                    width: tileWidth,
+                    height: tileHeight,
+                    label: isPrimary ? "Main" : "Ext \(index)",
+                    edge: edge,
+                    enabled: displaySettings.isEnabled,
+                    animate: animate
+                )
+                .offset(
+                    x: offsetX + (frame.minX - union.minX) * scale,
+                    y: offsetY + (union.maxY - frame.maxY) * scale
+                )
+            }
+        }
+    }
+}
+
+private struct DisplayTile: View {
+    let width: CGFloat
+    let height: CGFloat
+    let label: String
+    let edge: DockEdge
+    let enabled: Bool
+    let animate: Bool
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .fill(.ultraThinMaterial)
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(.white.opacity(enabled ? 0.32 : 0.14), lineWidth: 1)
+
+            if enabled {
+                dockBar
+            }
+
+            Text(label)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+                .padding(2)
+        }
+        .frame(width: width, height: height)
+        .opacity(enabled ? 1 : 0.55)
+    }
+
+    private var dockBar: some View {
+        let thickness = max(3, min(width, height) * 0.16)
+        let barLength = (edge == .bottom ? width : height) * 0.66
+        return RoundedRectangle(cornerRadius: thickness / 2, style: .continuous)
+            .fill(Color.accentColor.opacity(animate ? 0.95 : 0.5))
+            .frame(
+                width: edge == .bottom ? barLength : thickness,
+                height: edge == .bottom ? thickness : barLength
+            )
+            .frame(width: width, height: height, alignment: alignment)
+    }
+
+    private var alignment: Alignment {
+        switch edge {
+        case .bottom: .bottom
+        case .left: .leading
+        case .right: .trailing
+        }
+    }
+}
+
 private struct DisplaySettingsSection: View {
     @ObservedObject var settings: SettingsStore
 
     var body: some View {
-        SettingsSection("External Displays") {
+        SettingsSection("Per-Display Docks") {
             VStack(spacing: 12) {
-                if externalDisplayRows.isEmpty {
-                    Text("Connect an external display to configure its MoreDock separately.")
+                if displayRows.isEmpty {
+                    Text("No displays detected.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Text("Each connected display has its own dock settings below. Turn off \u{201C}Use global placement\u{201D} or \u{201C}Use global appearance\u{201D} to give a display its own location, size, and opacity.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                ForEach(externalDisplayRows) { display in
+                ForEach(displayRows) { display in
                     VStack(spacing: 9) {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
@@ -185,7 +329,7 @@ private struct DisplaySettingsSection: View {
                         SettingsToggleRow("Use global placement", isOn: binding(display.id, \.followsGlobalPlacement))
 
                         SettingsPickerRow("Location") {
-                            Picker("Edge", selection: binding(display.id, \.edge)) {
+                            Picker("Edge", selection: placementBinding(display.id, \.edge)) {
                                 ForEach(DockEdge.allCases) { edge in
                                     Text(edge.title).tag(edge)
                                 }
@@ -194,26 +338,21 @@ private struct DisplaySettingsSection: View {
                             .pickerStyle(.segmented)
                             .frame(width: 190)
                         }
-                        .disabled(settings.settingsForDisplay(display.id).followsGlobalPlacement)
 
                         SettingsToggleRow("Use global appearance", isOn: binding(display.id, \.followsGlobalAppearance))
 
-                        SettingsSliderRow(title: "Icon size", value: binding(display.id, \.iconSize), range: 18...96, step: 1, suffix: "")
-                            .disabled(settings.settingsForDisplay(display.id).followsGlobalAppearance)
+                        SettingsSliderRow(title: "Icon size", value: appearanceBinding(display.id, \.iconSize), range: 18...96, step: 1, suffix: "")
 
-                        SettingsSliderRow(title: "Opacity", value: binding(display.id, \.opacity), range: 0.45...1.0, step: 0.01, suffix: "%")
-                            .disabled(settings.settingsForDisplay(display.id).followsGlobalAppearance)
+                        SettingsSliderRow(title: "Opacity", value: appearanceBinding(display.id, \.opacity), range: 0.45...1.0, step: 0.01, suffix: "%")
 
-                        SettingsToggleRow("Auto-hide", isOn: binding(display.id, \.autoHide))
-                            .disabled(settings.settingsForDisplay(display.id).followsGlobalAppearance)
+                        SettingsToggleRow("Auto-hide", isOn: appearanceBinding(display.id, \.autoHide))
 
-                        SettingsToggleRow("Magnification", isOn: binding(display.id, \.magnification))
-                            .disabled(settings.settingsForDisplay(display.id).followsGlobalAppearance)
+                        SettingsToggleRow("Magnification", isOn: appearanceBinding(display.id, \.magnification))
 
                         SettingsToggleRow("Avoid junctions", isOn: binding(display.id, \.avoidDisplayJunctions))
                     }
 
-                    if display.id != externalDisplayRows.last?.id {
+                    if display.id != displayRows.last?.id {
                         Divider()
                     }
                 }
@@ -221,19 +360,30 @@ private struct DisplaySettingsSection: View {
         }
     }
 
-    private var externalDisplayRows: [DisplayRow] {
+    private var displayRows: [DisplayRow] {
         let primaryID = CGMainDisplayID()
-        return NSScreen.screens.enumerated().compactMap { index, screen -> DisplayRow? in
+        var externalIndex = 0
+        return NSScreen.screens.compactMap { screen -> DisplayRow? in
             guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
                 return nil
             }
-            guard number.uint32Value != primaryID else { return nil }
+            let isPrimary = number.uint32Value == primaryID
+            let name: String
+            if isPrimary {
+                name = "Main Display"
+            } else {
+                externalIndex += 1
+                name = "External Display \(externalIndex)"
+            }
 
-            let size = "\(Int(screen.frame.width))x\(Int(screen.frame.height))"
+            let scale = screen.backingScaleFactor
+            let pixels = "\(Int(screen.frame.width * scale))\u{00D7}\(Int(screen.frame.height * scale))"
+            let localizedName = screen.localizedName
+            let detail = localizedName.isEmpty ? "\(pixels) \u{2022} ID \(number.stringValue)" : "\(localizedName) \u{2022} \(pixels)"
             return DisplayRow(
                 id: number.stringValue,
-                name: "External Display \(index + 1)",
-                detail: "\(size) - ID \(number.stringValue)"
+                name: name,
+                detail: detail
             )
         }
     }
@@ -243,6 +393,32 @@ private struct DisplaySettingsSection: View {
             settings.settingsForDisplay(displayID)[keyPath: keyPath]
         } set: { value in
             settings.updateSettingsForDisplay(displayID) { displaySettings in
+                displaySettings[keyPath: keyPath] = value
+            }
+        }
+    }
+
+    /// Editing a per-display placement control detaches that display from global
+    /// placement so the change is applied to just that screen.
+    private func placementBinding<Value>(_ displayID: String, _ keyPath: WritableKeyPath<DisplayDockSettings, Value>) -> Binding<Value> {
+        Binding {
+            settings.settingsForDisplay(displayID)[keyPath: keyPath]
+        } set: { value in
+            settings.updateSettingsForDisplay(displayID) { displaySettings in
+                displaySettings.followsGlobalPlacement = false
+                displaySettings[keyPath: keyPath] = value
+            }
+        }
+    }
+
+    /// Editing a per-display appearance control detaches that display from global
+    /// appearance so the change is applied to just that screen.
+    private func appearanceBinding<Value>(_ displayID: String, _ keyPath: WritableKeyPath<DisplayDockSettings, Value>) -> Binding<Value> {
+        Binding {
+            settings.settingsForDisplay(displayID)[keyPath: keyPath]
+        } set: { value in
+            settings.updateSettingsForDisplay(displayID) { displaySettings in
+                displaySettings.followsGlobalAppearance = false
                 displaySettings[keyPath: keyPath] = value
             }
         }
@@ -440,18 +616,36 @@ private struct SettingsUpdateRow: View {
 }
 
 private struct SettingsAccessibilityRow: View {
+    @State private var isTrusted = AccessibilityWindowMover.isTrusted(prompt: false)
+    private let pollTimer = Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()
+
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            Text("Accessibility")
-                .font(.callout.weight(.medium))
-                .lineLimit(1)
-            Spacer()
-            Button("Grant") {
-                _ = AccessibilityWindowMover.isTrusted(prompt: true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Accessibility")
+                    .font(.callout.weight(.medium))
+                    .lineLimit(1)
+                Text(isTrusted ? "Granted \u{2014} Clicked Display is ready." : "Needed for Clicked Display.")
+                    .font(.caption)
+                    .foregroundStyle(isTrusted ? Color.green : Color.secondary)
             }
-            .controlSize(.small)
+            Spacer()
+            if isTrusted {
+                Image(systemName: "checkmark.seal.fill")
+                    .foregroundStyle(.green)
+            } else {
+                Button("Grant\u{2026}") {
+                    if !AccessibilityWindowMover.isTrusted(prompt: true) {
+                        AccessibilityWindowMover.openAccessibilitySettings()
+                    }
+                }
+                .controlSize(.small)
+            }
         }
         .frame(minHeight: 30)
+        .onReceive(pollTimer) { _ in
+            isTrusted = AccessibilityWindowMover.isTrusted(prompt: false)
+        }
     }
 }
 
@@ -461,8 +655,43 @@ private struct SettingsVisualEffect: NSViewRepresentable {
         view.blendingMode = .behindWindow
         view.material = .underWindowBackground
         view.state = .active
+        view.isEmphasized = true
         return view
     }
 
     func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+
+/// A soft, translucent colour wash layered over the window's vibrancy material to
+/// give the Settings window a liquid-glass depth in both light and dark modes.
+private struct LiquidGlassBackdrop: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: [
+                    Color.white.opacity(0.10),
+                    Color.clear,
+                    Color.accentColor.opacity(0.07)
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+
+            RadialGradient(
+                colors: [Color.white.opacity(0.16), Color.clear],
+                center: .topTrailing,
+                startRadius: 0,
+                endRadius: 460
+            )
+
+            RadialGradient(
+                colors: [Color.accentColor.opacity(0.12), Color.clear],
+                center: .bottomLeading,
+                startRadius: 0,
+                endRadius: 520
+            )
+        }
+        .blendMode(.plusLighter)
+        .allowsHitTesting(false)
+    }
 }

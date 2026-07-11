@@ -68,22 +68,53 @@ enum SystemDockPreferences {
     }
 
     static func nativeDockScreen(for screens: [NSScreen], edge: DockEdge) -> NSScreen? {
-        if let dockWindowScreen = visibleDockWindowScreen(for: screens) {
+        if let dockWindowScreen = dockWindowScreens(for: screens).first {
             return dockWindowScreen
         }
 
-        let reservedScreens = screens.filter { screen in
-            switch edge {
-            case .bottom:
-                screen.visibleFrame.minY - screen.frame.minY > 20
-            case .left:
-                screen.visibleFrame.minX - screen.frame.minX > 20
-            case .right:
-                screen.frame.maxX - screen.visibleFrame.maxX > 20
+        let reservedScreens = screens.filter { hasReservedDockArea($0, edge: edge) }
+        return reservedScreens.first ?? primaryDisplayScreen(from: screens) ?? screens.first
+    }
+
+    /// Returns the screen numbers of every display that currently appears to host the
+    /// native macOS Dock. Combining the on-screen Dock window location with the
+    /// reserved-area heuristic (and a primary-display fallback) makes sure MoreDock
+    /// never draws a duplicate dock on top of the real one.
+    static func nativeDockScreenNumbers(for screens: [NSScreen], edge: DockEdge) -> Set<NSNumber> {
+        var numbers = Set<NSNumber>()
+
+        for screen in dockWindowScreens(for: screens) {
+            if let number = screenNumber(of: screen) {
+                numbers.insert(number)
             }
         }
 
-        return reservedScreens.first ?? primaryDisplayScreen(from: screens) ?? screens.first
+        for screen in screens where hasReservedDockArea(screen, edge: edge) {
+            if let number = screenNumber(of: screen) {
+                numbers.insert(number)
+            }
+        }
+
+        if numbers.isEmpty, let number = primaryDisplayScreen(from: screens).flatMap(screenNumber(of:)) {
+            numbers.insert(number)
+        }
+
+        return numbers
+    }
+
+    private static func hasReservedDockArea(_ screen: NSScreen, edge: DockEdge) -> Bool {
+        switch edge {
+        case .bottom:
+            return screen.visibleFrame.minY - screen.frame.minY > 20
+        case .left:
+            return screen.visibleFrame.minX - screen.frame.minX > 20
+        case .right:
+            return screen.frame.maxX - screen.visibleFrame.maxX > 20
+        }
+    }
+
+    private static func screenNumber(of screen: NSScreen) -> NSNumber? {
+        screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber
     }
 
     static func primaryDisplayScreen(from screens: [NSScreen] = NSScreen.screens) -> NSScreen? {
@@ -223,15 +254,28 @@ enum SystemDockPreferences {
         return NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier
     }
 
-    private static func visibleDockWindowScreen(for screens: [NSScreen]) -> NSScreen? {
+    /// Screens that currently show a real Dock window, most-covered first.
+    ///
+    /// `CGWindowListCopyWindowInfo` reports bounds in Quartz global coordinates
+    /// (origin at the top-left of the primary display, y increasing downward), while
+    /// `NSScreen.frame` uses Cocoa coordinates (origin bottom-left, y increasing
+    /// upward). The bounds must be flipped before intersecting them with screen
+    /// frames, otherwise the Dock can be attributed to the wrong display on
+    /// multi-monitor setups and MoreDock draws a duplicate dock over the real one.
+    private static func dockWindowScreens(for screens: [NSScreen]) -> [NSScreen] {
         guard let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID) as? [[String: Any]] else {
-            return nil
+            return []
         }
+
+        let primaryHeight = screens.first { $0.frame.origin == .zero }?.frame.height
+            ?? screens.map(\.frame.maxY).max()
+            ?? 0
 
         let dockWindows = windows.filter { window in
             (window[kCGWindowOwnerName as String] as? String) == "Dock"
         }
 
+        var matches: [(screen: NSScreen, area: CGFloat)] = []
         for window in dockWindows {
             guard let boundsDictionary = window[kCGWindowBounds as String] as? [String: Any],
                   let x = boundsDictionary["X"] as? CGFloat,
@@ -243,14 +287,16 @@ enum SystemDockPreferences {
                 continue
             }
 
-            let bounds = NSRect(x: x, y: y, width: width, height: height)
+            let bounds = NSRect(x: x, y: primaryHeight - y - height, width: width, height: height)
             if let screen = screens.max(by: { $0.frame.intersection(bounds).area < $1.frame.intersection(bounds).area }),
                screen.frame.intersects(bounds) {
-                return screen
+                matches.append((screen, screen.frame.intersection(bounds).area))
             }
         }
 
-        return nil
+        return matches
+            .sorted { $0.area > $1.area }
+            .map(\.screen)
     }
 
     private static func relaunchDock() {

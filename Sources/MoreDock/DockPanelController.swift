@@ -64,7 +64,10 @@ final class DockPanelController {
         let metrics = DockPanelMetrics(settings: settings, itemCount: apps.count, visibleFrame: visible)
         let thickness = metrics.thickness
         let length = metrics.length
-        let inset: CGFloat = settings.autoHide || settings.followsSystemDock ? 0 : 8
+        // Keep a small gap from the physical screen edge even when following the
+        // native Dock so the glass panel does not bleed across a shared display seam
+        // onto the neighbouring monitor.
+        let inset: CGFloat = 6
 
         switch settings.edge {
         case .bottom:
@@ -280,13 +283,8 @@ private struct DockIconButton: View {
         let clickedDisplayFrame = targetVisibleFrame
         let moveAfterActivation: @Sendable (pid_t) -> Void = { processIdentifier in
             guard shouldMoveToClickedDisplay else { return }
-            DispatchQueue.main.async {
-                guard AccessibilityWindowMover.isTrusted(prompt: false) else { return }
-                for attempt in 1...14 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.16) {
-                        AccessibilityWindowMover.moveWindows(for: processIdentifier, to: clickedDisplayFrame)
-                    }
-                }
+            Task { @MainActor in
+                AccessibilityMoveCoordinator.shared.requestMove(pid: processIdentifier, to: clickedDisplayFrame)
             }
         }
 

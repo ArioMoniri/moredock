@@ -21,6 +21,13 @@ enum AccessibilityWindowMover {
         return AXIsProcessTrustedWithOptions(options)
     }
 
+    static func openAccessibilitySettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
+    }
+
     static func moveWindows(for processIdentifier: pid_t, to visibleFrame: NSRect, prompt: Bool = false) {
         guard isTrusted(prompt: prompt) else { return }
 
@@ -89,5 +96,102 @@ enum AccessibilityWindowMover {
             x: origin.x,
             y: union.maxY - origin.y - size.height
         )
+    }
+}
+
+/// Coordinates Clicked-Display window moves so the Accessibility permission is
+/// requested at most once per cooldown and a pending move is applied automatically
+/// as soon as the user grants access, without requiring a second click.
+@MainActor
+final class AccessibilityMoveCoordinator {
+    static let shared = AccessibilityMoveCoordinator()
+
+    private struct Request {
+        let frame: NSRect
+        var attemptsLeft: Int
+    }
+
+    private var pending: [pid_t: Request] = [:]
+    private var pollTimer: Timer?
+    private var lastPromptAt: Date?
+    private let promptCooldown: TimeInterval = 20
+    private let maxPollAttempts = 60
+
+    private init() {}
+
+    /// Move `pid`'s windows onto `frame`. If Accessibility is not yet trusted, the
+    /// request is queued, the permission is requested once, and the move fires when
+    /// trust becomes available.
+    func requestMove(pid: pid_t, to frame: NSRect) {
+        guard !frame.isEmpty else { return }
+
+        if AccessibilityWindowMover.isTrusted(prompt: false) {
+            performMoves(pid: pid, frame: frame)
+            return
+        }
+
+        pending[pid] = Request(frame: frame, attemptsLeft: maxPollAttempts)
+        promptForAccessibilityIfNeeded()
+        startPolling()
+    }
+
+    private func performMoves(pid: pid_t, frame: NSRect) {
+        for attempt in 1...14 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.16) {
+                AccessibilityWindowMover.moveWindows(for: pid, to: frame)
+            }
+        }
+    }
+
+    private func promptForAccessibilityIfNeeded() {
+        let now = Date()
+        if let last = lastPromptAt, now.timeIntervalSince(last) < promptCooldown {
+            return
+        }
+        lastPromptAt = now
+        _ = AccessibilityWindowMover.isTrusted(prompt: true)
+    }
+
+    private func startPolling() {
+        guard pollTimer == nil else { return }
+        pollTimer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.poll()
+            }
+        }
+    }
+
+    private func poll() {
+        guard !pending.isEmpty else {
+            stopPolling()
+            return
+        }
+
+        let trusted = AccessibilityWindowMover.isTrusted(prompt: false)
+        for (pid, request) in pending {
+            guard NSRunningApplication(processIdentifier: pid) != nil else {
+                pending[pid] = nil
+                continue
+            }
+
+            if trusted {
+                performMoves(pid: pid, frame: request.frame)
+                pending[pid] = nil
+                continue
+            }
+
+            var next = request
+            next.attemptsLeft -= 1
+            pending[pid] = next.attemptsLeft <= 0 ? nil : next
+        }
+
+        if pending.isEmpty {
+            stopPolling()
+        }
+    }
+
+    private func stopPolling() {
+        pollTimer?.invalidate()
+        pollTimer = nil
     }
 }

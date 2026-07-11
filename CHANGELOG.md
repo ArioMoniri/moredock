@@ -1,5 +1,18 @@
 # Release Notes
 
+## Unreleased
+
+- 📄 Adds the Apache License 2.0 (© Ariorad Moniri) plus a NOTICE file.
+- 🗺️ Adds an animated Display Layout map in Settings that shows every screen's position and the glowing dock edge for each one.
+- 🎛️ Every appearance control is now always editable: changing a locked control detaches it from "Follow native Dock" (globally) or from global placement/appearance (per display) so the change actually applies instead of being greyed out.
+- 🖥️ Per-Display Docks now list **every** display (including the main one), not just external ones, each with its own show/hide, location, size, opacity, auto-hide, magnification, and junction settings.
+- 🔐 Clicked Display no longer prompts for Accessibility on every click: it asks once (throttled), remembers the pending move, and applies it automatically as soon as access is granted — no second click needed.
+- ⚙️ Settings gains a live Accessibility status row with a Grant… button that opens System Settings directly.
+- 🖥️ Fixes the duplicate dock that could overlap the real macOS Dock on the main display by flipping Quartz→Cocoa coordinates when locating the native Dock and excluding **all** displays that host it.
+- 🧊 Insets extra docks a few points off shared display seams so their glass no longer bleeds onto the neighbouring monitor.
+- ✨ Gives the Settings window a richer liquid-glass backdrop.
+- 🕵️ Adds a detective (Murdoch-inspired) app-icon vector source, README hero, and an icon-generation script.
+
 ## 0.1.9
 
 This release expands the per-display controls and fixes a likely Clicked Display coordinate issue.

@@ -122,11 +122,15 @@ final class DockController {
 
         let runtimeSettings = SystemDockPreferences.runtimeSettings(fallback: settings)
         var targetScreens = settings.showOnAllDisplays ? NSScreen.screens : [SystemDockPreferences.primaryDisplayScreen()].compactMap { $0 }
-        if settings.followSystemDock, settings.hideOnNativeDockScreen,
-           let nativeDockScreenNumber = SystemDockPreferences
-            .nativeDockScreen(for: NSScreen.screens, edge: runtimeSettings.edge)?
-            .screenNumber {
-            targetScreens.removeAll { $0.screenNumber == nativeDockScreenNumber }
+        if settings.followSystemDock, settings.hideOnNativeDockScreen {
+            let nativeDockScreenNumbers = SystemDockPreferences
+                .nativeDockScreenNumbers(for: NSScreen.screens, edge: runtimeSettings.edge)
+            if !nativeDockScreenNumbers.isEmpty {
+                targetScreens.removeAll { screen in
+                    guard let number = screen.screenNumber else { return false }
+                    return nativeDockScreenNumbers.contains(number)
+                }
+            }
         }
         targetScreens = targetScreens.filter { screen in
             guard let displayID = screen.screenNumber?.stringValue else { return false }

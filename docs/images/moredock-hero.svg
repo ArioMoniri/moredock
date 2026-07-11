@@ -1,0 +1,56 @@
+<svg width="1200" height="380" viewBox="0 0 1200 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MoreDock — a Dock for every display">
+  <defs>
+    <linearGradient id="hbg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2A2A55"/>
+      <stop offset="0.55" stop-color="#1B1B38"/>
+      <stop offset="1" stop-color="#101024"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#6EA8FE" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#6EA8FE" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hmetal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F4D488"/>
+      <stop offset="0.5" stop-color="#C99A3E"/>
+      <stop offset="1" stop-color="#8A5E1F"/>
+    </linearGradient>
+    <radialGradient id="hlens" cx="0.4" cy="0.35" r="0.85">
+      <stop offset="0" stop-color="#DCE6FF" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#8FA6E8" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#2A2A55" stop-opacity="0.1"/>
+    </radialGradient>
+    <linearGradient id="hhat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#20233A"/>
+      <stop offset="1" stop-color="#0C0D1A"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="380" rx="28" fill="url(#hbg)"/>
+  <circle cx="300" cy="190" r="260" fill="url(#glow)"/>
+
+  <!-- Detective magnifier badge -->
+  <g transform="translate(150 60) scale(0.52)">
+    <g transform="rotate(35 452 512)">
+      <rect x="486" y="612" width="52" height="250" rx="26" fill="url(#hmetal)" stroke="#5C3E14" stroke-width="4"/>
+    </g>
+    <circle cx="452" cy="452" r="212" fill="url(#hlens)"/>
+    <circle cx="452" cy="452" r="212" fill="none" stroke="url(#hmetal)" stroke-width="44"/>
+    <rect x="330" y="500" width="244" height="70" rx="35" fill="#0E1024" fill-opacity="0.62"/>
+    <rect x="330.5" y="500.5" width="243" height="69" rx="34.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.28" stroke-width="3"/>
+    <circle cx="372" cy="535" r="20" fill="#6EA8FE"/>
+    <circle cx="422" cy="535" r="20" fill="#7BE0C0"/>
+    <circle cx="472" cy="535" r="20" fill="#F6C177"/>
+    <circle cx="522" cy="535" r="20" fill="#E88FB8"/>
+    <path d="M 352 372 A 150 150 0 0 1 470 320" fill="none" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="16" stroke-linecap="round"/>
+    <g transform="rotate(-9 452 300)">
+      <ellipse cx="452" cy="316" rx="196" ry="34" fill="#171A2E"/>
+      <path d="M 320 314 C 322 224 356 196 452 196 C 548 196 582 224 584 314 C 540 296 500 288 452 288 C 404 288 364 296 320 314 Z" fill="url(#hhat)"/>
+      <rect x="322" y="300" width="260" height="20" rx="10" fill="#0A0B16"/>
+    </g>
+  </g>
+
+  <!-- Wordmark -->
+  <text x="470" y="180" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="92" font-weight="700" fill="#FFFFFF">MoreDock</text>
+  <text x="474" y="238" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#9FB2E6">A Dock for every display — on the case.</text>
+  <text x="474" y="292" font-family="-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', Helvetica, Arial, sans-serif" font-size="24" font-weight="400" fill="#6E7BA8">Detective-grade window tracking across monitors, inspired by Murdoch.</text>
+</svg>
