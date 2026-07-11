@@ -1,5 +1,12 @@
 # Release Notes
 
+## 0.3.8
+
+- 🪟 **Clicking a running app with no open windows now opens a new one**, just like the native Dock — MoreDock sends the app a reopen event instead of only raising existing windows, so a windowless-but-running app (Finder, Safari, etc.) responds to a click.
+- ⏱️ **Per-dock reveal delay.** Auto-hide now has a "Reveal delay" slider — set it to `0s` for an instant reveal or dial it up for a slower, native-Dock-style appearance. Available both globally (Appearance) and per display (Customize).
+- 🩹 **Auto-hide no longer flickers.** The reveal now hit-tests the dock's on-screen rectangle and keeps the dock open through a short grace period, so a pointer skimming the edge no longer makes the dock rapidly show and hide.
+- 🧭 **Clearer Settings.** The Appearance section now states up front that it holds the defaults for every dock, and that a display set to "Customize" uses its own values instead — so the relationship between global Appearance and per-dock customization is obvious.
+
 ## 0.3.7
 
 - 🩹 **Fixes extra docks being invisible.** Earlier builds mirrored the macOS Dock's auto-hide setting into MoreDock, which left the stored auto-hide value stuck **on** for many installs — so every extra dock was parked off-screen at zero opacity and only flickered into view at the exact screen edge. A one-time migration now forces auto-hide back **off** (both globally and per display), so the docks show up. Auto-hide can still be turned back on explicitly from Settings.

@@ -112,6 +112,11 @@ struct SettingsView: View {
                         VStack(spacing: 14) {
                             SettingsSection("Appearance") {
                                 VStack(alignment: .leading, spacing: 11) {
+                                    Text("The defaults for every dock. A display set to \u{201C}Customize\u{201D} in Per-Display Docks uses its own values instead of these.")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+
                                     if settings.followSystemDock {
                                         Text("Showing your macOS Dock values. Editing anything here switches to your own settings for every MoreDock.")
                                             .font(.caption2)
@@ -134,6 +139,9 @@ struct SettingsView: View {
                                     SettingsSliderRow(title: "Opacity", value: $settings.opacity, range: 0.45...1.0, step: 0.01, suffix: "%")
                                     SettingsToggleRow("Magnification", isOn: mirrored(\.magnification, native: SystemDockPreferences.nativeMagnification))
                                     SettingsToggleRow("Auto-hide", isOn: $settings.autoHide)
+                                    if settings.autoHide {
+                                        SettingsSliderRow(title: "Reveal delay", value: $settings.autoHideDelay, range: 0.0...1.0, step: 0.05, suffix: "s")
+                                    }
                                     SettingsToggleRow("Running indicators", isOn: mirrored(\.showRunningIndicators, native: SystemDockPreferences.nativeShowRunningIndicators))
                                     SettingsToggleRow("Glass material", isOn: $settings.liquidGlass)
                                 }
@@ -415,6 +423,9 @@ private struct DisplaySettingsSection: View {
                     SettingsSliderRow(title: "Icon size", value: binding(display.id, \.iconSize), range: 18...96, step: 1, suffix: "")
                     SettingsSliderRow(title: "Opacity", value: binding(display.id, \.opacity), range: 0.45...1.0, step: 0.01, suffix: "%")
                     SettingsToggleRow("Auto-hide", isOn: binding(display.id, \.autoHide))
+                    if displaySettings.autoHide {
+                        SettingsSliderRow(title: "Reveal delay", value: binding(display.id, \.autoHideDelay), range: 0.0...1.0, step: 0.05, suffix: "s")
+                    }
                     SettingsToggleRow("Magnification", isOn: binding(display.id, \.magnification))
                     SettingsToggleRow("Running indicators", isOn: binding(display.id, \.showRunningIndicators))
                     SettingsToggleRow("Avoid junctions", isOn: binding(display.id, \.avoidDisplayJunctions))
@@ -746,10 +757,13 @@ private struct SettingsSliderRow: View {
     }
 
     private var label: String {
-        if suffix == "%" {
-            "\(Int(value * 100))%"
-        } else {
-            "\(Int(value))"
+        switch suffix {
+        case "%":
+            return "\(Int(value * 100))%"
+        case "s":
+            return value == 0 ? "0s" : String(format: "%.2fs", value)
+        default:
+            return "\(Int(value))"
         }
     }
 }
