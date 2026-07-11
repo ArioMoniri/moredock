@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.3.7
+
+- 🩹 **Fixes extra docks being invisible.** Earlier builds mirrored the macOS Dock's auto-hide setting into MoreDock, which left the stored auto-hide value stuck **on** for many installs — so every extra dock was parked off-screen at zero opacity and only flickered into view at the exact screen edge. A one-time migration now forces auto-hide back **off** (both globally and per display), so the docks show up. Auto-hide can still be turned back on explicitly from Settings.
+
 ## 0.3.6
 
 - 🧪 Adds a **Log Dock Diagnostics** menu-bar item (⌘D) that dumps a full snapshot — settings, screens, which macOS Dock display is excluded, and every panel's real window frame, mapped screen, visibility, active-space, alpha, level, and content size — so an invisible dock can be pinpointed.
