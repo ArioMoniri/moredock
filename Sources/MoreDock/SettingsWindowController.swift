@@ -34,40 +34,6 @@ struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
     var onCheckForUpdates: (() -> Void)?
 
-    /// Snapshots the live native Dock values into the editable settings and turns
-    /// off "Follow native Dock", so editing one control does not snap the others
-    /// back to stale stored defaults.
-    private func detachFromNative() {
-        guard settings.followSystemDock else { return }
-        settings.adoptNativeDockValues()
-        settings.followSystemDock = false
-    }
-
-    /// While following the native Dock, the getter reflects the real native value so
-    /// the control matches reality; editing snapshots native and detaches.
-    private func mirrored<Value>(
-        _ keyPath: ReferenceWritableKeyPath<SettingsStore, Value>,
-        native: @autoclosure @escaping () -> Value
-    ) -> Binding<Value> {
-        Binding {
-            settings.followSystemDock ? native() : settings[keyPath: keyPath]
-        } set: { newValue in
-            detachFromNative()
-            settings[keyPath: keyPath] = newValue
-        }
-    }
-
-    /// A binding that applies a value and detaches from "Follow native Dock" so the
-    /// edit takes effect (used for controls with no native equivalent).
-    private func detach<Value>(_ keyPath: ReferenceWritableKeyPath<SettingsStore, Value>) -> Binding<Value> {
-        Binding {
-            settings[keyPath: keyPath]
-        } set: { newValue in
-            detachFromNative()
-            settings[keyPath: keyPath] = newValue
-        }
-    }
-
     var body: some View {
         ZStack {
             SettingsVisualEffect()
@@ -86,7 +52,6 @@ struct SettingsView: View {
                                 VStack(spacing: 11) {
                                     SettingsToggleRow("Enable MoreDock", isOn: $settings.isEnabled)
                                     SettingsToggleRow("Show on all displays", isOn: $settings.showOnAllDisplays)
-                                    SettingsToggleRow("Follow native Dock", isOn: $settings.followSystemDock)
                                     SettingsToggleRow("Hide on Dock display", isOn: $settings.hideOnNativeDockScreen)
                                     SettingsToggleRow("Respect menu bar", isOn: $settings.respectMenuBarSafeArea)
                                     SettingsToggleRow("Avoid display junctions", isOn: $settings.avoidDisplayJunctions)
@@ -110,43 +75,6 @@ struct SettingsView: View {
                         .frame(maxWidth: .infinity, alignment: .top)
 
                         VStack(spacing: 14) {
-                            SettingsSection("Appearance") {
-                                VStack(alignment: .leading, spacing: 11) {
-                                    Text("The defaults for every dock. A display set to \u{201C}Customize\u{201D} in Per-Display Docks uses its own values instead of these.")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-
-                                    if settings.followSystemDock {
-                                        Text("Showing your macOS Dock values. Editing anything here switches to your own settings for every MoreDock.")
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                    }
-
-                                    SettingsPickerRow("Edge") {
-                                        Picker("Edge", selection: mirrored(\.edge, native: SystemDockPreferences.nativeEdge)) {
-                                            ForEach(DockEdge.allCases) { edge in
-                                                Text(edge.title).tag(edge)
-                                            }
-                                        }
-                                        .labelsHidden()
-                                        .pickerStyle(.segmented)
-                                        .frame(width: 190)
-                                    }
-
-                                    SettingsSliderRow(title: "Icon size", value: mirrored(\.iconSize, native: SystemDockPreferences.nativeIconSize), range: 32...72, step: 2, suffix: "")
-                                    SettingsSliderRow(title: "Opacity", value: $settings.opacity, range: 0.45...1.0, step: 0.01, suffix: "%")
-                                    SettingsToggleRow("Magnification", isOn: mirrored(\.magnification, native: SystemDockPreferences.nativeMagnification))
-                                    SettingsToggleRow("Auto-hide", isOn: $settings.autoHide)
-                                    if settings.autoHide {
-                                        SettingsSliderRow(title: "Reveal delay", value: $settings.autoHideDelay, range: 0.0...1.0, step: 0.05, suffix: "s")
-                                    }
-                                    SettingsToggleRow("Running indicators", isOn: mirrored(\.showRunningIndicators, native: SystemDockPreferences.nativeShowRunningIndicators))
-                                    SettingsToggleRow("Glass material", isOn: $settings.liquidGlass)
-                                }
-                            }
-
                             NativeDockSettingsSection()
 
                             SettingsSection("Diagnostics") {
@@ -329,12 +257,12 @@ private struct DisplayTile: View {
 
     private var dockBar: some View {
         let thickness = max(3, min(width, height) * 0.16)
-        let barLength = (edge == .bottom ? width : height) * 0.66
+        let barLength = (edge.isHorizontal ? width : height) * 0.66
         return RoundedRectangle(cornerRadius: thickness / 2, style: .continuous)
             .fill(Color.accentColor.opacity(animate ? 0.95 : 0.5))
             .frame(
-                width: edge == .bottom ? barLength : thickness,
-                height: edge == .bottom ? thickness : barLength
+                width: edge.isHorizontal ? barLength : thickness,
+                height: edge.isHorizontal ? thickness : barLength
             )
             .frame(width: width, height: height, alignment: alignment)
     }
@@ -344,6 +272,7 @@ private struct DisplayTile: View {
         case .bottom: .bottom
         case .left: .leading
         case .right: .trailing
+        case .top: .top
         }
     }
 }
@@ -361,7 +290,7 @@ private struct DisplaySettingsSection: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    Text("Turn on \u{201C}Customize\u{201D} to give a display its own location, size, and opacity. Otherwise it follows the global Appearance settings.")
+                    Text("Every dock mirrors your macOS Dock. Turn on \u{201C}Customize\u{201D} to give a display its own edge, size, opacity, auto-hide, glass, and more. Edit the real macOS Dock under \u{201C}macOS Dock\u{201D}.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -429,9 +358,10 @@ private struct DisplaySettingsSection: View {
                     }
                     SettingsToggleRow("Magnification", isOn: binding(display.id, \.magnification))
                     SettingsToggleRow("Running indicators", isOn: binding(display.id, \.showRunningIndicators))
+                    SettingsToggleRow("Glass material", isOn: binding(display.id, \.liquidGlass))
                     SettingsToggleRow("Avoid junctions", isOn: binding(display.id, \.avoidDisplayJunctions))
                 } else {
-                    Text("Following global settings \u{2022} Location: \(display.effectiveEdge.title)")
+                    Text("Mirroring the macOS Dock \u{2022} Location: \(display.effectiveEdge.title)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -572,6 +502,12 @@ private struct DisplaySettingsSection: View {
                     displaySettings.followsGlobalPlacement = false
                     displaySettings.followsGlobalAppearance = false
                     displaySettings.edge = display.effectiveEdge
+                    // Seed the appearance from what the dock currently mirrors (the
+                    // macOS Dock) so turning on Customize doesn't jump to stale
+                    // defaults.
+                    displaySettings.iconSize = SystemDockPreferences.nativeIconSize
+                    displaySettings.magnification = SystemDockPreferences.nativeMagnification
+                    displaySettings.showRunningIndicators = SystemDockPreferences.nativeShowRunningIndicators
                 } else {
                     displaySettings.followsGlobalPlacement = true
                     displaySettings.followsGlobalAppearance = true
@@ -619,7 +555,8 @@ private struct NativeDockSettingsSection: View {
 
             SettingsPickerRow("Location") {
                     Picker("Location", selection: $edge) {
-                        ForEach(DockEdge.allCases) { edge in
+                        // The macOS Dock only supports bottom, left and right.
+                        ForEach(DockEdge.allCases.filter { $0 != .top }) { edge in
                             Text(edge.title).tag(edge)
                         }
                     }

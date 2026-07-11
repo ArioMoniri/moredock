@@ -4,11 +4,11 @@ import AppKit
 /// renderer (`DockController`) and the Settings "Display Layout" preview so the
 /// preview always matches reality.
 enum DockPlacement {
-    /// The base edge before per-display overrides: the native Dock orientation when
-    /// following the system Dock, otherwise the user's global edge.
+    /// The base edge before per-display overrides. Non-customized docks mirror the
+    /// macOS Dock, so the base edge is always the native Dock's orientation.
     @MainActor
     static func globalEdge(for settings: SettingsStore) -> DockEdge {
-        settings.followSystemDock ? SystemDockPreferences.nativeEdge : settings.edge
+        SystemDockPreferences.nativeEdge
     }
 
     /// The edge a display's dock is actually drawn on, after applying that display's
@@ -36,15 +36,17 @@ enum DockPlacement {
             edge = isEdgeShared(.right, of: screen, with: allScreens) ? .bottom : .right
         case .right:
             edge = isEdgeShared(.left, of: screen, with: allScreens) ? .bottom : .left
-        case .bottom:
-            // A shared bottom edge (a display directly below/at the junction) moves
-            // to a free side edge so the dock is not stuck on the seam.
+        case .bottom, .top:
+            // A shared top/bottom edge (a display directly above/below at the junction)
+            // moves to a free side edge so the dock is not stuck on the seam.
             if !isEdgeShared(.left, of: screen, with: allScreens) {
                 edge = .left
             } else if !isEdgeShared(.right, of: screen, with: allScreens) {
                 edge = .right
-            } else {
+            } else if edge == .top, !isEdgeShared(.bottom, of: screen, with: allScreens) {
                 edge = .bottom
+            } else if edge == .bottom, !isEdgeShared(.top, of: screen, with: allScreens) {
+                edge = .top
             }
         }
         return edge
@@ -66,6 +68,8 @@ enum DockPlacement {
                 return verticalOverlap && abs(frame.maxX - otherFrame.minX) <= tolerance
             case .bottom:
                 return horizontalOverlap && abs(frame.minY - otherFrame.maxY) <= tolerance
+            case .top:
+                return horizontalOverlap && abs(frame.maxY - otherFrame.minY) <= tolerance
             }
         }
     }

@@ -89,11 +89,18 @@ final class DockController {
             }
             .store(in: &cancellables)
 
-        refreshTimer = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { [weak self] _ in
+        // Add the tick to `.common` run-loop modes, not just `.default`. Otherwise the
+        // timer stops firing while the run loop is in event-tracking mode (e.g. while
+        // dragging a slider or toggle in Settings), which freezes every dock's
+        // auto-hide reveal until some unrelated event kicks the run loop back to
+        // default — the "docks won't open until I trigger the main Dock" symptom.
+        let timer = Timer(timeInterval: 0.12, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.tick()
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        refreshTimer = timer
 
         logScreens()
         refreshAll()
@@ -391,6 +398,7 @@ final class DockController {
             adjusted.autoHideDelay = displaySettings.autoHideDelay
             adjusted.magnification = displaySettings.magnification
             adjusted.showRunningIndicators = displaySettings.showRunningIndicators
+            adjusted.liquidGlass = displaySettings.liquidGlass
             adjusted.magnifiedIconSize = max(displaySettings.iconSize * 1.22, adjusted.magnifiedIconSize)
         }
 

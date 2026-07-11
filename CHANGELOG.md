@@ -1,5 +1,13 @@
 # Release Notes
 
+## 0.4.0
+
+- 🧭 **New "Top" dock location.** Each dock can now sit on the top edge of its display (below the menu bar), alongside Bottom, Left and Right.
+- 🧹 **Simpler settings — the global "Appearance" section is gone.** Every dock now mirrors your macOS Dock by default; to make one dock different (edge, size, opacity, auto-hide, reveal delay, glass, running indicators), turn on its **Customize**. Edit the real macOS Dock under **macOS Dock**. No more overlapping "defaults for all docks" panel.
+- 💾 **Settings now persist reliably across launches.** Changes are flushed to disk immediately and again on quit, so a setting changed right before quitting (including **Open apps on → Clicked Display**) is no longer lost — which also fixes Clicked Display appearing to "do nothing" after a relaunch.
+- 🩹 **Auto-hide no longer freezes while you use Settings.** The reveal timer now runs during UI interaction, so docks don't get stuck hidden until you trigger the native Dock.
+- 🪟 Per-dock **Glass material** toggle added to Customize.
+
 ## 0.3.9
 
 - 🧭 **Fixes a junction dock appearing on the wrong screen.** When two displays are stacked and a dock's hide edge borders the neighbouring screen, the dock no longer slides across the seam onto the other display — it now fades in place on its own screen's edge, so a bottom dock stays on the upper screen's lower edge instead of crawling onto the lower screen.
