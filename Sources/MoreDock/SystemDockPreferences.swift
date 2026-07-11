@@ -26,12 +26,16 @@ struct DockRuntimeSettings: Equatable {
         opacity = settings.opacity
         liquidGlass = settings.liquidGlass
         showRunningIndicators = settings.showRunningIndicators
-        autoHide = settings.autoHide
+        // A non-customized dock mirrors the macOS Dock and stays visible. Auto-hide is
+        // a per-display option applied only when a display is customized, so the base
+        // never auto-hides (there is no global auto-hide control any more).
+        autoHide = false
         autoHideDelay = settings.autoHideDelay
         autoHideDuration = 0.20
         respectMenuBarSafeArea = settings.respectMenuBarSafeArea
         avoidDisplayJunctions = settings.avoidDisplayJunctions
-        followsSystemDock = settings.followSystemDock
+        // Non-customized docks always mirror the macOS Dock.
+        followsSystemDock = true
         activationDisplayMode = settings.activationDisplayMode
     }
 }
@@ -44,8 +48,9 @@ enum SystemDockPreferences {
     @MainActor
     static func runtimeSettings(fallback settings: SettingsStore) -> DockRuntimeSettings {
         var runtime = DockRuntimeSettings(settings: settings)
-        guard settings.followSystemDock else { return runtime }
-
+        // A non-customized dock always mirrors the macOS Dock's edge, size,
+        // magnification and running indicators. MoreDock-only traits (opacity, glass,
+        // auto-hide) keep their defaults unless a display is customized.
         synchronize()
         runtime.edge = edge(from: string("orientation")) ?? runtime.edge
         runtime.iconSize = clamped(double("tilesize"), defaultValue: runtime.iconSize, range: 24...96)
@@ -131,6 +136,10 @@ enum SystemDockPreferences {
             return screen.visibleFrame.minX - screen.frame.minX > 20
         case .right:
             return screen.frame.maxX - screen.visibleFrame.maxX > 20
+        case .top:
+            // The native Dock never lives on the top edge, so there is no reserved
+            // Dock area to detect there.
+            return false
         }
     }
 

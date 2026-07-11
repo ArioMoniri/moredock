@@ -191,6 +191,20 @@ final class DockPanelController {
                 frame.origin.x = screen.frame.maxX + 2
             }
             return frame
+        case .top:
+            // Anchor below the menu bar (visibleFrame top) so a top dock is never
+            // hidden underneath it.
+            let topY = screen.visibleFrame.maxY - thickness - inset
+            var frame = NSRect(
+                x: visible.midX - length / 2,
+                y: topY,
+                width: length,
+                height: thickness
+            )
+            if !revealed && hideBySliding {
+                frame.origin.y = screen.frame.maxY + 2
+            }
+            return frame
         }
     }
 
@@ -240,6 +254,8 @@ final class DockPanelController {
             return point.x <= screen.frame.minX + revealBand
         case .right:
             return point.x >= screen.frame.maxX - revealBand
+        case .top:
+            return point.y >= screen.frame.maxY - revealBand
         }
     }
 }
@@ -301,7 +317,7 @@ struct DockPanelMetrics {
     init(settings: SnapshotSettings, itemCount: Int, visibleFrame: NSRect) {
         let count = max(itemCount, 1)
         let baseIcon = CGFloat(settings.iconSize)
-        let availableLength = max(180, settings.edge == .bottom ? visibleFrame.width - 48 : visibleFrame.height - 48)
+        let availableLength = max(180, settings.edge.isHorizontal ? visibleFrame.width - 48 : visibleFrame.height - 48)
         let baseGap = max(6, baseIcon * 0.13)
         let basePadding = max(8, baseIcon * 0.22)
         let buttonExtra: CGFloat = 4
@@ -369,7 +385,7 @@ struct DockPanelView: View {
 
     @ViewBuilder
     private func stack<Content: View>(spacing: CGFloat, @ViewBuilder content: () -> Content) -> some View {
-        if settings.edge == .bottom {
+        if settings.edge.isHorizontal {
             HStack(spacing: spacing, content: content)
         } else {
             VStack(spacing: spacing, content: content)
@@ -440,22 +456,23 @@ private struct DockIconButton: View {
         case .bottom: .bottom
         case .left: .trailing
         case .right: .leading
+        case .top: .top
         }
     }
 
     private var separator: some View {
-        let isBottom = settings.edge == .bottom
+        let isHorizontal = settings.edge.isHorizontal
         let lineThickness: CGFloat = 1
         let lineLength = baseIconSize * 0.6
         return RoundedRectangle(cornerRadius: lineThickness / 2, style: .continuous)
             .fill(.white.opacity(0.28))
             .frame(
-                width: isBottom ? lineThickness : lineLength,
-                height: isBottom ? lineLength : lineThickness
+                width: isHorizontal ? lineThickness : lineLength,
+                height: isHorizontal ? lineLength : lineThickness
             )
             .frame(
-                width: isBottom ? baseIconSize * 0.5 : baseIconSize,
-                height: isBottom ? baseIconSize : baseIconSize * 0.5
+                width: isHorizontal ? baseIconSize * 0.5 : baseIconSize,
+                height: isHorizontal ? baseIconSize : baseIconSize * 0.5
             )
     }
 

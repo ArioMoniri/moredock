@@ -47,6 +47,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
+    /// Flush any pending settings to disk before the process exits, so a change made
+    /// right before quitting is never lost.
+    func applicationWillTerminate(_ notification: Notification) {
+        settings.flush()
+    }
+
     private func configureStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = NSImage(systemSymbolName: "dock.rectangle", accessibilityDescription: "MoreDock")

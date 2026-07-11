@@ -5,6 +5,7 @@ enum DockEdge: String, CaseIterable, Codable, Identifiable {
     case bottom
     case left
     case right
+    case top
 
     var id: String { rawValue }
 
@@ -13,7 +14,14 @@ enum DockEdge: String, CaseIterable, Codable, Identifiable {
         case .bottom: "Bottom"
         case .left: "Left"
         case .right: "Right"
+        case .top: "Top"
         }
+    }
+
+    /// A horizontal dock runs along the top or bottom edge (icons in a row); a
+    /// vertical dock runs along a side (icons in a column).
+    var isHorizontal: Bool {
+        self == .bottom || self == .top
     }
 }
 
@@ -30,6 +38,7 @@ struct DisplayDockSettings: Codable, Equatable {
     var autoHideDelay = 0.0
     var magnification = true
     var showRunningIndicators = true
+    var liquidGlass = true
     var avoidDisplayJunctions = true
 }
 
@@ -188,19 +197,16 @@ final class SettingsStore: ObservableObject {
 
     private func save(_ value: Any, for key: String) {
         defaults.set(value, forKey: key)
+        // Flush immediately. MoreDock is a background agent that the user quits
+        // abruptly (menu → Quit) right after changing a setting, and without an
+        // explicit synchronize a just-written value can be lost before the system
+        // flushes it — the "settings don't persist across launches" symptom.
+        defaults.synchronize()
     }
 
-    /// Copies the current native macOS Dock values into the editable global
-    /// settings. Called the moment a mirrored Appearance control is edited so that
-    /// turning off "Follow native Dock" does not snap the other controls back to
-    /// stale stored defaults.
-    func adoptNativeDockValues() {
-        edge = SystemDockPreferences.nativeEdge
-        iconSize = SystemDockPreferences.nativeIconSize
-        magnification = SystemDockPreferences.nativeMagnification
-        showRunningIndicators = SystemDockPreferences.nativeShowRunningIndicators
-        // Auto-hide is intentionally not adopted from the native Dock — extra docks
-        // stay visible by default and auto-hide is controlled explicitly.
+    /// Forces any pending settings to disk. Called on app termination as a safety net.
+    func flush() {
+        defaults.synchronize()
     }
 
     func settingsForDisplay(_ displayID: String) -> DisplayDockSettings {
@@ -218,6 +224,7 @@ final class SettingsStore: ObservableObject {
     private func saveDisplaySettings() {
         guard let data = try? JSONEncoder().encode(displaySettings) else { return }
         defaults.set(data, forKey: Keys.displaySettings)
+        defaults.synchronize()
     }
 
     // MARK: - Per-dock pinned apps
@@ -264,6 +271,7 @@ final class SettingsStore: ObservableObject {
     private func saveCustomDockApps() {
         guard let data = try? JSONEncoder().encode(customDockApps) else { return }
         defaults.set(data, forKey: Keys.customDockApps)
+        defaults.synchronize()
     }
 
     private enum Keys {
