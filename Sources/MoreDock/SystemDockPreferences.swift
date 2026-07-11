@@ -56,7 +56,10 @@ enum SystemDockPreferences {
             defaultValue: max(runtime.iconSize * 1.25, runtime.iconSize + 10),
             range: runtime.iconSize...128
         )
-        runtime.autoHide = bool("autohide") ?? runtime.autoHide
+        // Do NOT mirror the native Dock's auto-hide onto the extra docks. The extra
+        // docks are the whole point of MoreDock, so they stay visible by default;
+        // auto-hide is an explicit MoreDock setting. Only the reveal timing is
+        // borrowed so it feels like macOS when the user does enable auto-hide.
         runtime.autoHideDelay = clamped(
             double("autohide-delay"),
             defaultValue: 0.0,
