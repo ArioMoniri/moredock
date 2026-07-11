@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.4.1
+
+- 👁️ **Docks stay visible again.** Leftover per-display auto-hide from earlier builds was making customized docks hide themselves; a one-time reset clears it, and turning on **Customize** now starts a dock visible (auto-hide off) instead of inheriting stale auto-hide. You can still turn auto-hide back on per dock.
+- 🧪 **Startup now logs the loaded settings** (Open apps on, customized displays, etc.) so the Logs window shows whether your settings survived the last quit — making any persistence issue diagnosable at a glance.
+- 💾 Settings also flush to disk when MoreDock resigns active (e.g. just before a Sparkle update swaps the app), in addition to on every change and on quit.
+
 ## 0.4.0
 
 - 🧭 **New "Top" dock location.** Each dock can now sit on the top edge of its display (below the menu bar), alongside Bottom, Left and Right.

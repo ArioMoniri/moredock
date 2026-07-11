@@ -508,6 +508,11 @@ private struct DisplaySettingsSection: View {
                     displaySettings.iconSize = SystemDockPreferences.nativeIconSize
                     displaySettings.magnification = SystemDockPreferences.nativeMagnification
                     displaySettings.showRunningIndicators = SystemDockPreferences.nativeShowRunningIndicators
+                    // Start visible: clear any auto-hide left over from earlier
+                    // experimentation so turning on Customize doesn't silently make the
+                    // dock hide itself.
+                    displaySettings.autoHide = false
+                    displaySettings.autoHideDelay = 0
                 } else {
                     displaySettings.followsGlobalPlacement = true
                     displaySettings.followsGlobalAppearance = true

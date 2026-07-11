@@ -177,8 +177,8 @@ final class SettingsStore: ObservableObject {
     /// stored global and per-display values back to `false` exactly once. Users
     /// who genuinely want auto-hide can re-enable it from Settings afterwards.
     private func migrateStuckAutoHide() {
-        guard !defaults.bool(forKey: Keys.didResetAutoHideV37) else { return }
-        defaults.set(true, forKey: Keys.didResetAutoHideV37)
+        guard !defaults.bool(forKey: Keys.didResetAutoHideV41) else { return }
+        defaults.set(true, forKey: Keys.didResetAutoHideV41)
 
         if autoHide {
             autoHide = false
@@ -207,6 +207,15 @@ final class SettingsStore: ObservableObject {
     /// Forces any pending settings to disk. Called on app termination as a safety net.
     func flush() {
         defaults.synchronize()
+    }
+
+    /// A snapshot of the loaded settings, logged at startup so it is obvious from the
+    /// Logs window whether values survived the last quit. If a setting you changed
+    /// shows its old/default value here after relaunching, the store is not
+    /// persisting; if it shows the new value, persistence is working.
+    var persistenceSummary: String {
+        let storeSeen = defaults.object(forKey: Keys.isEnabled) != nil
+        return "Loaded settings (store=\(storeSeen ? "found" : "EMPTY")): openAppsOn=\(activationDisplayMode.rawValue) enabled=\(isEnabled) showOnAll=\(showOnAllDisplays) hideOnDock=\(hideOnNativeDockScreen) customizedDisplays=\(displaySettings.count) customPinLists=\(customDockApps.count)"
     }
 
     func settingsForDisplay(_ displayID: String) -> DisplayDockSettings {
@@ -292,6 +301,6 @@ final class SettingsStore: ObservableObject {
         static let avoidDisplayJunctions = "avoidDisplayJunctions"
         static let displaySettings = "displaySettings"
         static let customDockApps = "customDockApps"
-        static let didResetAutoHideV37 = "didResetAutoHideV37"
+        static let didResetAutoHideV41 = "didResetAutoHideV41"
     }
 }
