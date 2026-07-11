@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.3.5
+
+- 🩹 Snaps each dock panel into place on first appearance instead of animating it up from a zero-size rect, so a dock can't get stuck invisible.
+- 🔎 Logs each panel's live state (revealed, auto-hide, app count, frame, on-screen, alpha) so an invisible dock can be diagnosed precisely from the Logs window.
+
 ## 0.3.4
 
 - 👁️ Extra docks stay **visible by default** and no longer inherit the macOS Dock's auto-hide. Auto-hide is now an explicit MoreDock toggle (off by default), so a hidden system Dock no longer makes every extra dock disappear, and turning auto-hide off reliably shows the docks. Only the reveal timing is still borrowed from macOS.

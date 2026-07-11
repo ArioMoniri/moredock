@@ -37,6 +37,8 @@ final class DockPanelController {
     private let screenNumber: DisplayID
     private var isRevealed = true
     private var revealRequestedAt: Date?
+    private var hasPositioned = false
+    private var lastStateSignature = ""
 
     init(screenNumber: DisplayID) {
         self.screenNumber = screenNumber
@@ -66,17 +68,37 @@ final class DockPanelController {
         updateRevealState(screen: screen, settings: snapshot, now: now)
 
         let targetFrame = frame(for: screen, apps: apps, settings: snapshot, revealed: isRevealed)
-        let animationDuration = settings.autoHide ? settings.autoHideDuration : 0.16
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = animationDuration
-            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
-            panel.animator().setFrame(targetFrame, display: true)
-            panel.animator().alphaValue = isRevealed ? 1.0 : 0.0
+        let targetAlpha: CGFloat = isRevealed ? 1.0 : 0.0
+
+        if !hasPositioned {
+            // Snap the first appearance into place instead of animating from a
+            // zero-size rect at the origin (which reads as "not showing").
+            hasPositioned = true
+            panel.setFrame(targetFrame, display: true)
+            panel.alphaValue = targetAlpha
+            panel.orderFrontRegardless()
+        } else {
+            let animationDuration = settings.autoHide ? settings.autoHideDuration : 0.16
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = animationDuration
+                context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                panel.animator().setFrame(targetFrame, display: true)
+                panel.animator().alphaValue = targetAlpha
+            }
+            if !panel.isVisible || isRevealed {
+                panel.orderFrontRegardless()
+            }
         }
 
-        if !panel.isVisible || isRevealed {
-            panel.orderFrontRegardless()
-        }
+        logStateIfChanged(targetFrame: targetFrame, apps: apps.count, autoHide: settings.autoHide)
+    }
+
+    private func logStateIfChanged(targetFrame: NSRect, apps: Int, autoHide: Bool) {
+        let frameText = "[\(Int(targetFrame.minX)),\(Int(targetFrame.minY)),\(Int(targetFrame.width))x\(Int(targetFrame.height))]"
+        let signature = "\(isRevealed)|\(autoHide)|\(apps)|\(frameText)|\(panel.isVisible)"
+        guard signature != lastStateSignature else { return }
+        lastStateSignature = signature
+        mdLog("Panel #\(screenNumber): revealed=\(isRevealed) autohide=\(autoHide) apps=\(apps) frame=\(frameText) onScreen=\(panel.isVisible) alpha=\(String(format: "%.2f", panel.alphaValue)).")
     }
 
     func close() {
