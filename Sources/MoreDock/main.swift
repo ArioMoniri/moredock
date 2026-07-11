@@ -81,6 +81,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         logsItem.target = self
         menu.addItem(logsItem)
 
+        let diagnosticsItem = NSMenuItem(title: "Log Dock Diagnostics", action: #selector(logDockDiagnostics), keyEquivalent: "d")
+        diagnosticsItem.target = self
+        menu.addItem(diagnosticsItem)
+
         menu.addItem(NSMenuItem.separator())
         let quitItem = NSMenuItem(title: "Quit MoreDock", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
@@ -144,6 +148,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         NSApp.activate(ignoringOtherApps: true)
         logWindowController?.showWindow(nil)
+    }
+
+    @objc private func logDockDiagnostics() {
+        dockController.refreshAll()
+        dockController.logDiagnostics()
+        showLogs()
     }
 
     @objc private func checkForUpdates(_ sender: NSMenuItem) {
