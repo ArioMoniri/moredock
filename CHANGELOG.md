@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.3.4
+
+- 👁️ Extra docks stay **visible by default** and no longer inherit the macOS Dock's auto-hide. Auto-hide is now an explicit MoreDock toggle (off by default), so a hidden system Dock no longer makes every extra dock disappear, and turning auto-hide off reliably shows the docks. Only the reveal timing is still borrowed from macOS.
+- 🧹 The **macOS Dock** editor (which duplicated the Appearance controls) is now a collapsed "Edit the real macOS Dock…" disclosure, so Settings isn't repetitive at a glance.
+
 ## 0.3.3
 
 - 🧲 Fixes docks that intermittently disappeared: the macOS Dock display is now detected with a confident-only check and the last known result is held while the Dock is auto-hidden, instead of flickering between the detected display and a fallback.

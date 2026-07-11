@@ -164,8 +164,9 @@ final class SettingsStore: ObservableObject {
         edge = SystemDockPreferences.nativeEdge
         iconSize = SystemDockPreferences.nativeIconSize
         magnification = SystemDockPreferences.nativeMagnification
-        autoHide = SystemDockPreferences.nativeAutoHide
         showRunningIndicators = SystemDockPreferences.nativeShowRunningIndicators
+        // Auto-hide is intentionally not adopted from the native Dock — extra docks
+        // stay visible by default and auto-hide is controlled explicitly.
     }
 
     func settingsForDisplay(_ displayID: String) -> DisplayDockSettings {

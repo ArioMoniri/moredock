@@ -133,7 +133,7 @@ struct SettingsView: View {
                                     SettingsSliderRow(title: "Icon size", value: mirrored(\.iconSize, native: SystemDockPreferences.nativeIconSize), range: 32...72, step: 2, suffix: "")
                                     SettingsSliderRow(title: "Opacity", value: $settings.opacity, range: 0.45...1.0, step: 0.01, suffix: "%")
                                     SettingsToggleRow("Magnification", isOn: mirrored(\.magnification, native: SystemDockPreferences.nativeMagnification))
-                                    SettingsToggleRow("Auto-hide", isOn: mirrored(\.autoHide, native: SystemDockPreferences.nativeAutoHide))
+                                    SettingsToggleRow("Auto-hide", isOn: $settings.autoHide)
                                     SettingsToggleRow("Running indicators", isOn: mirrored(\.showRunningIndicators, native: SystemDockPreferences.nativeShowRunningIndicators))
                                     SettingsToggleRow("Glass material", isOn: $settings.liquidGlass)
                                 }
@@ -579,16 +579,28 @@ private struct NativeDockSettingsSection: View {
     @State private var magnifiedIconSize = SystemDockPreferences.nativeMagnifiedIconSize
     @State private var magnification = SystemDockPreferences.nativeMagnification
     @State private var autoHide = SystemDockPreferences.nativeAutoHide
+    @State private var expanded = false
 
     var body: some View {
         SettingsSection("macOS Dock") {
-            VStack(alignment: .leading, spacing: 11) {
-                Text("Changes the real macOS Dock in System Settings (restarts the Dock). This is not MoreDock\u{2019}s own appearance.")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+            DisclosureGroup(isExpanded: $expanded) {
+                content
+                    .padding(.top, 6)
+            } label: {
+                Text("Edit the real macOS Dock\u{2026}")
+                    .font(.callout.weight(.medium))
+            }
+        }
+    }
 
-                SettingsPickerRow("Location") {
+    private var content: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            Text("Changes the real macOS Dock in System Settings (restarts the Dock). This is not MoreDock\u{2019}s own appearance.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            SettingsPickerRow("Location") {
                     Picker("Location", selection: $edge) {
                         ForEach(DockEdge.allCases) { edge in
                             Text(edge.title).tag(edge)
@@ -626,7 +638,6 @@ private struct NativeDockSettingsSection: View {
                 }
             }
         }
-    }
 
     private func refresh() {
         edge = SystemDockPreferences.nativeEdge
