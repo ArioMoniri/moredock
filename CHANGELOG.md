@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.3.3
+
+- 🧲 Fixes docks that intermittently disappeared: the macOS Dock display is now detected with a confident-only check and the last known result is held while the Dock is auto-hidden, instead of flickering between the detected display and a fallback.
+- 📐 A dock whose **bottom** edge sits on a display junction now relocates to a free side edge (like left/right docks already did), instead of staying stuck on the seam.
+
 ## 0.3.2
 
 - 🚫 Fixes a duplicate dock appearing on the main display (over the real macOS Dock) after editing an appearance control. "Hide on Dock display" no longer depends on "Follow native Dock", so the display that owns the macOS Dock is always excluded (detected using the real Dock orientation). This also stabilises docks that would intermittently disappear.
