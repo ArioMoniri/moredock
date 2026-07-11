@@ -15,13 +15,20 @@ enum DockPlacement {
     /// placement override and junction avoidance.
     static func resolvedEdge(
         globalEdge: DockEdge,
+        globalAvoidJunctions: Bool,
         displaySettings: DisplayDockSettings,
         screen: NSScreen,
         allScreens: [NSScreen]
     ) -> DockEdge {
         var edge = displaySettings.followsGlobalPlacement ? globalEdge : displaySettings.edge
 
-        guard displaySettings.avoidDisplayJunctions else { return edge }
+        // A display that follows global placement uses the global junction-avoidance
+        // toggle; a customized display uses its own. Otherwise the global toggle would
+        // silently do nothing for every non-customized dock.
+        let avoidJunctions = displaySettings.followsGlobalPlacement
+            ? globalAvoidJunctions
+            : displaySettings.avoidDisplayJunctions
+        guard avoidJunctions else { return edge }
         guard isEdgeShared(edge, of: screen, with: allScreens) else { return edge }
 
         switch edge {

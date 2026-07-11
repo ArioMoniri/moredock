@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.3.9
+
+- 🧭 **Fixes a junction dock appearing on the wrong screen.** When two displays are stacked and a dock's hide edge borders the neighbouring screen, the dock no longer slides across the seam onto the other display — it now fades in place on its own screen's edge, so a bottom dock stays on the upper screen's lower edge instead of crawling onto the lower screen.
+- 🔗 **The global "Avoid display junctions" toggle now works for every dock.** Previously it only affected displays you had explicitly customized; a display that follows the global settings now honours the global toggle too.
+- 🖱️ A hidden auto-hide dock that fades in place lets clicks pass through to whatever is beneath it while it's invisible.
+
 ## 0.3.8
 
 - 🪟 **Clicking a running app with no open windows now opens a new one**, just like the native Dock — MoreDock sends the app a reopen event instead of only raising existing windows, so a windowless-but-running app (Finder, Safari, etc.) responds to a click.

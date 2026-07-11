@@ -77,6 +77,11 @@ final class DockPanelController {
 
         let targetFrame = isRevealed ? revealedFrame : frame(for: screen, apps: apps, settings: snapshot, revealed: false)
         let targetAlpha: CGFloat = isRevealed ? 1.0 : 0.0
+        // A hidden auto-hide dock that fades in place (at a display junction) still
+        // occupies its rectangle; let clicks pass through to whatever is underneath
+        // while it is invisible. Reveal is driven by global mouse polling, not by the
+        // panel receiving events, so this doesn't affect showing it again.
+        panel.ignoresMouseEvents = !isRevealed
 
         if !hasPositioned {
             // Snap the first appearance into place instead of animating from a
@@ -145,6 +150,13 @@ final class DockPanelController {
         // onto the neighbouring monitor.
         let inset: CGFloat = 6
 
+        // When the hide edge borders another display (a display junction), sliding
+        // the dock off that edge would push it *onto the neighbouring screen* rather
+        // than off-screen. In that case the dock stays put and only fades (alpha), so
+        // it always appears on its own screen's edge instead of crawling across the
+        // seam onto the adjacent display.
+        let hideBySliding = !DockPlacement.isEdgeShared(settings.edge, of: screen, with: NSScreen.screens)
+
         switch settings.edge {
         case .bottom:
             var frame = NSRect(
@@ -153,7 +165,7 @@ final class DockPanelController {
                 width: length,
                 height: thickness
             )
-            if !revealed {
+            if !revealed && hideBySliding {
                 frame.origin.y = screen.frame.minY - frame.height - 2
             }
             return frame
@@ -164,7 +176,7 @@ final class DockPanelController {
                 width: thickness,
                 height: length
             )
-            if !revealed {
+            if !revealed && hideBySliding {
                 frame.origin.x = screen.frame.minX - frame.width - 2
             }
             return frame
@@ -175,7 +187,7 @@ final class DockPanelController {
                 width: thickness,
                 height: length
             )
-            if !revealed {
+            if !revealed && hideBySliding {
                 frame.origin.x = screen.frame.maxX + 2
             }
             return frame
