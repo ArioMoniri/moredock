@@ -443,7 +443,7 @@ private struct DisplaySettingsSection: View {
                     .foregroundStyle(.secondary)
                 Spacer()
                 if hasCustom {
-                    Button("Reset") { settings.resetPins(display.id) }
+                    Button("Reset") { settings.resetPins(for: display.id) }
                         .controlSize(.small)
                 }
                 Button("Add App\u{2026}") { addApp(to: display.id) }
