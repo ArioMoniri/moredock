@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 @MainActor
 final class SettingsWindowController: NSWindowController {
@@ -424,8 +425,64 @@ private struct DisplaySettingsSection: View {
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+
+                appsRow(display)
             }
         }
+    }
+
+    @ViewBuilder
+    private func appsRow(_ display: DisplayRow) -> some View {
+        let hasCustom = settings.hasCustomPins(display.id)
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 8) {
+                Text("Apps")
+                    .font(.callout.weight(.medium))
+                Text(hasCustom ? "Custom list" : "Mirrors macOS Dock")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if hasCustom {
+                    Button("Reset") { settings.resetPins(display.id) }
+                        .controlSize(.small)
+                }
+                Button("Add App\u{2026}") { addApp(to: display.id) }
+                    .controlSize(.small)
+            }
+            .frame(minHeight: 30)
+
+            Text("Drag an app onto this dock, or right-click a dock icon, to pin or remove it.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private func addApp(to displayID: String) {
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.applicationBundle]
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        let name = url.deletingPathExtension().lastPathComponent
+        guard let allDocks = promptAddScope(appName: name) else { return }
+        let targets: [String]
+        if allDocks {
+            let all = NSScreen.screens.compactMap { ($0.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.stringValue }
+            targets = all.isEmpty ? [displayID] : all
+        } else {
+            targets = [displayID]
+        }
+        settings.pin(PinnedApp.from(url: url), toDisplays: targets, seededWith: nativePins())
+    }
+
+    private func nativePins() -> [PinnedApp] {
+        SystemDockPreferences.persistentApps()
+            .filter { $0.bundleIdentifier != "com.apple.finder" }
+            .map { PinnedApp(id: $0.id, name: $0.name, bundleIdentifier: $0.bundleIdentifier, path: $0.url?.path) }
     }
 
     private var displayRows: [DisplayRow] {

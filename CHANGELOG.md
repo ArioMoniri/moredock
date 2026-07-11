@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.3.0
+
+- 📌 Each dock can now have its **own independent app list**. Pin or remove apps by dragging an app onto a dock, using **Add App…** in Settings, or right-clicking a dock icon; adding asks whether to apply to this dock or all docks, and a per-display **Reset** returns the dock to mirroring the macOS Dock.
+- 🖼️ README: documents custom app lists, and clarifies that the Settings **Edge** control reflects the real macOS Dock orientation (the earlier "always Bottom" was the pre-0.2.4 display bug, now fixed).
+
 ## 0.2.5
 
 - ⚡ Fixes auto-hide lag and delayed panels: the expensive native-Dock reads (window list + preferences) are now cached and refreshed about once a second instead of on every 0.12s tick, so the mouse-edge reveal stays responsive.
