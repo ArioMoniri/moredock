@@ -26,6 +26,7 @@ struct DisplayDockSettings: Codable, Equatable {
     var opacity = 0.82
     var autoHide = false
     var magnification = true
+    var showRunningIndicators = true
     var avoidDisplayJunctions = true
 }
 
@@ -71,6 +72,10 @@ final class SettingsStore: ObservableObject {
         didSet { save(liquidGlass, for: Keys.liquidGlass) }
     }
 
+    @Published var showRunningIndicators: Bool {
+        didSet { save(showRunningIndicators, for: Keys.showRunningIndicators) }
+    }
+
     @Published var autoHide: Bool {
         didSet { save(autoHide, for: Keys.autoHide) }
     }
@@ -99,6 +104,7 @@ final class SettingsStore: ObservableObject {
         magnification = defaults.object(forKey: Keys.magnification) as? Bool ?? true
         opacity = defaults.object(forKey: Keys.opacity) as? Double ?? 0.82
         liquidGlass = defaults.object(forKey: Keys.liquidGlass) as? Bool ?? true
+        showRunningIndicators = defaults.object(forKey: Keys.showRunningIndicators) as? Bool ?? true
         autoHide = defaults.object(forKey: Keys.autoHide) as? Bool ?? false
         respectMenuBarSafeArea = defaults.object(forKey: Keys.respectMenuBarSafeArea) as? Bool ?? true
         avoidDisplayJunctions = defaults.object(forKey: Keys.avoidDisplayJunctions) as? Bool ?? true
@@ -114,6 +120,18 @@ final class SettingsStore: ObservableObject {
 
     private func save(_ value: Any, for key: String) {
         defaults.set(value, forKey: key)
+    }
+
+    /// Copies the current native macOS Dock values into the editable global
+    /// settings. Called the moment a mirrored Appearance control is edited so that
+    /// turning off "Follow native Dock" does not snap the other controls back to
+    /// stale stored defaults.
+    func adoptNativeDockValues() {
+        edge = SystemDockPreferences.nativeEdge
+        iconSize = SystemDockPreferences.nativeIconSize
+        magnification = SystemDockPreferences.nativeMagnification
+        autoHide = SystemDockPreferences.nativeAutoHide
+        showRunningIndicators = SystemDockPreferences.nativeShowRunningIndicators
     }
 
     func settingsForDisplay(_ displayID: String) -> DisplayDockSettings {
@@ -144,6 +162,7 @@ final class SettingsStore: ObservableObject {
         static let magnification = "magnification"
         static let opacity = "opacity"
         static let liquidGlass = "liquidGlass"
+        static let showRunningIndicators = "showRunningIndicators"
         static let autoHide = "autoHide"
         static let respectMenuBarSafeArea = "respectMenuBarSafeArea"
         static let avoidDisplayJunctions = "avoidDisplayJunctions"

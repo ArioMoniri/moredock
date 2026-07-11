@@ -1,5 +1,14 @@
 # Release Notes
 
+## 0.2.4
+
+- 🧭 The Appearance controls now show the **actual** macOS Dock values (edge, icon size, magnification, auto-hide) while Follow native Dock is on, so the Edge/Auto-hide finally match reality; editing snapshots those values and switches to your own settings.
+- 🟢 Adds a **Running indicators** setting that mirrors the macOS Dock's "show indicators for open applications" and can be overridden per display; the dots turn off by default when the system Dock has them off.
+- 🖥️ The per-display list no longer shows a redundant "Customize" for the display that hosts the macOS Dock — it says the dock stays hidden there instead.
+- 🧭 The per-display Location picker only offers edges the dock will actually stay on (a junction-shared edge is hidden while Avoid junctions is on).
+- 🪟 Hides the window title so "MoreDock Settings" no longer overlaps the top of the content.
+- 🔎 Logs how many windows a Clicked-Display move actually moved (or that none were movable), to diagnose "granted but nothing happens".
+
 ## 0.2.3
 
 - 🧭 Fixes the Settings/graphic mismatch: the per-display Location now reflects the **resolved** edge, and the Display Layout map and the Per-Display list always agree.

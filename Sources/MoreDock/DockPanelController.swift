@@ -148,6 +148,7 @@ struct SnapshotSettings: Equatable {
     var magnification = true
     var opacity = 0.82
     var liquidGlass = true
+    var showRunningIndicators = true
     var autoHide = false
     var autoHideDelay = 0.05
     var autoHideDuration = 0.20
@@ -176,6 +177,7 @@ struct SnapshotSettings: Equatable {
         magnification = settings.magnification
         opacity = settings.opacity
         liquidGlass = settings.liquidGlass
+        showRunningIndicators = settings.showRunningIndicators
         autoHide = settings.autoHide
         autoHideDelay = settings.autoHideDelay
         autoHideDuration = settings.autoHideDuration
@@ -284,7 +286,7 @@ private struct DockIconButton: View {
 
     @ViewBuilder
     private var runningDot: some View {
-        if item.isRunning && item.kind == .application && item.bundleIdentifier != "com.apple.finder" {
+        if settings.showRunningIndicators && item.isRunning && item.kind == .application && item.bundleIdentifier != "com.apple.finder" {
             Circle()
                 .fill(.white.opacity(0.85))
                 .frame(width: max(3, iconSize * 0.1), height: max(3, iconSize * 0.1))

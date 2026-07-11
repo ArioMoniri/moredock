@@ -232,6 +232,7 @@ final class DockController {
             adjusted.opacity = displaySettings.opacity
             adjusted.autoHide = displaySettings.autoHide
             adjusted.magnification = displaySettings.magnification
+            adjusted.showRunningIndicators = displaySettings.showRunningIndicators
             adjusted.magnifiedIconSize = max(displaySettings.iconSize * 1.22, adjusted.magnifiedIconSize)
         }
 
