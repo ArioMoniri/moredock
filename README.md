@@ -16,10 +16,12 @@ It follows your real Dock settings, stays out of the main Dock’s way, and runs
 
 - 🖥️ Adds Dock panels to extra displays.
 - 🍎 Hides on the display that already owns the native macOS Dock.
-- 📁 Mirrors pinned Dock apps, running apps, folders, and stacks such as Downloads.
+- 🧬 Mirrors the native Dock order: Finder, pinned apps, running apps, a separator, folders/stacks (Downloads), and Trash — with running-indicator dots.
 - 📐 Follows native Dock edge, tile size, magnification, auto-hide delay, and reveal timing.
 - 🧊 Uses a compact glass panel style with no visible Dock icon for MoreDock itself.
 - 🪟 Can move clicked apps to the display where their MoreDock icon was clicked.
+- 🖱️ Left-click the menu-bar icon to open Settings; right-click for the menu.
+- 🪵 Built-in Logs window (Settings ▸ Diagnostics ▸ Logs) for troubleshooting.
 - 🔄 Uses Sparkle for signed app updates from GitHub releases.
 
 ## Current Release 🚀
@@ -58,9 +60,17 @@ brew install --cask moredock
 
 MoreDock only needs Accessibility permission for **Clicked Display** mode.
 
-The first time you click a MoreDock icon in Clicked Display mode without permission, MoreDock asks for Accessibility access **once** (it will not re-prompt on every click). As soon as you grant it, the window you clicked moves to that display automatically — you do not have to click again. Settings shows a live **Accessibility** status row with a **Grant…** button that opens System Settings directly.
+macOS evaluates Accessibility trust **when a process starts**, so enabling MoreDock in the list while it is already running often does not take effect until it is relaunched. The reliable sequence is:
 
-macOS stores that permission against the exact app bundle and signature. If you switch between local debug builds, unsigned builds, and signed release builds, macOS may ask again. For normal use, install the signed release from the `.dmg`, grant Accessibility permission once, then keep using that installed app.
+1. In Settings ▸ Diagnostics ▸ **Accessibility**, click **Grant…** and enable MoreDock in Privacy & Security ▸ Accessibility.
+2. Click **Relaunch** (next to Grant…) so a fresh copy picks up the grant.
+
+If it still keeps asking, the cause is almost always the app bundle's signature:
+
+- **Unsigned / ad-hoc builds** (including local `.build` runs) cannot retain the grant — each launch looks like a new app. Use the signed release `.dmg`.
+- **Translocated copies** (run straight from a quarantined download) change path each launch. Move MoreDock into `/Applications` first.
+
+The Settings ▸ Diagnostics ▸ **Logs** window records the exact bundle path, signature type, and every Accessibility event, which makes these cases obvious.
 
 ## Native Dock Matching 📐
 

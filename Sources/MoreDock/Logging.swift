@@ -108,10 +108,58 @@ enum Diagnostics {
     @MainActor
     static func logStartup() {
         mdLog("MoreDock started · \(summaryLine())")
+        mdLog(codeSignatureSummary())
         if isTranslocated {
             mdLog("Running from a translocated/temporary path. Move MoreDock into /Applications so Accessibility permission persists.", level: .warn)
         } else if isDevBuild {
             mdLog("Running a local dev build from .build. After granting Accessibility, quit and reopen MoreDock. Each rebuild changes the signature and needs a re-grant — the signed release keeps it permanently.", level: .warn)
+        }
+    }
+
+    /// Reads this bundle's code signature so the logs reveal whether it is a proper
+    /// Developer ID signature (grant persists) or ad-hoc (grant will not persist).
+    static func codeSignatureSummary() -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/codesign")
+        process.arguments = ["-dvv", Bundle.main.bundlePath]
+        let errorPipe = Pipe()
+        process.standardError = errorPipe
+        process.standardOutput = Pipe()
+
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return "Signature: could not run codesign (\(error.localizedDescription))."
+        }
+
+        let data = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        let output = String(data: data, encoding: .utf8) ?? ""
+        let isAdhoc = output.contains("Signature=adhoc")
+        var authority = "none"
+        for line in output.split(separator: "\n") where line.hasPrefix("Authority=") {
+            authority = String(line.dropFirst("Authority=".count))
+            break
+        }
+
+        if isAdhoc || authority == "none" {
+            return "Signature: ad-hoc/unsigned — macOS will NOT keep an Accessibility grant across relaunches. Install the Developer ID signed release."
+        }
+        return "Signature: \(authority) — grant should persist after you relaunch once."
+    }
+
+    /// Relaunches MoreDock. macOS evaluates Accessibility trust when a process
+    /// starts, so a fresh instance is the reliable way to pick up a grant that was
+    /// enabled while the app was already running.
+    @MainActor
+    static func relaunch() {
+        mdLog("Relaunching MoreDock to pick up the Accessibility grant.")
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: Bundle.main.bundleURL, configuration: configuration) { _, _ in
+            DispatchQueue.main.async {
+                NSApp.terminate(nil)
+            }
         }
     }
 }

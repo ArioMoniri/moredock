@@ -14,22 +14,46 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindowController: SettingsWindowController?
     private var logWindowController: LogWindowController?
     private var statusItem: NSStatusItem?
+    private var statusMenu: NSMenu?
+    private var trustTimer: Timer?
+    private var lastTrust = false
+
+    private enum Keys {
+        static let hasLaunchedBefore = "hasLaunchedBefore"
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         Diagnostics.logStartup()
         configureStatusItem()
         dockController.start()
+        startTrustMonitor()
 
-        if CommandLine.arguments.contains("--show-settings") {
+        let defaults = UserDefaults.standard
+        let firstLaunch = !defaults.bool(forKey: Keys.hasLaunchedBefore)
+        if firstLaunch {
+            defaults.set(true, forKey: Keys.hasLaunchedBefore)
+        }
+
+        if firstLaunch || CommandLine.arguments.contains("--show-settings") {
             openSettings()
         }
+    }
+
+    /// Reopen (clicking the app in Finder/Launchpad while it is already running)
+    /// opens Settings, since MoreDock has no regular windows of its own.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openSettings()
+        return true
     }
 
     private func configureStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = NSImage(systemSymbolName: "dock.rectangle", accessibilityDescription: "MoreDock")
         item.button?.imagePosition = .imageLeading
+        item.button?.target = self
+        item.button?.action = #selector(statusItemClicked(_:))
+        item.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
 
         let menu = NSMenu()
         menu.addItem(withTitle: "MoreDock", action: nil, keyEquivalent: "")
@@ -62,8 +86,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         quitItem.target = self
         menu.addItem(quitItem)
 
-        item.menu = menu
+        statusMenu = menu
         statusItem = item
+    }
+
+    @objc private func statusItemClicked(_ sender: NSStatusBarButton) {
+        let event = NSApp.currentEvent
+        let isSecondaryClick = event?.type == .rightMouseUp
+            || event?.modifierFlags.contains(.control) == true
+
+        if isSecondaryClick, let menu = statusMenu {
+            menu.popUp(positioning: nil, at: NSPoint(x: 0, y: sender.bounds.height + 4), in: sender)
+        } else {
+            openSettings()
+        }
+    }
+
+    private func startTrustMonitor() {
+        lastTrust = AccessibilityWindowMover.isTrusted(prompt: false)
+        trustTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.checkTrustChange()
+            }
+        }
+    }
+
+    private func checkTrustChange() {
+        let now = AccessibilityWindowMover.isTrusted(prompt: false)
+        guard now != lastTrust else { return }
+        lastTrust = now
+        mdLog("Accessibility trust changed to \(now ? "granted" : "not granted").", level: now ? .info : .warn)
     }
 
     @objc private func toggleEnabled(_ sender: NSMenuItem) {
