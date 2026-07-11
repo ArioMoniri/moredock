@@ -5,7 +5,7 @@ MoreDock is a native macOS menu-bar app that adds Dock-style launchers to the di
 It follows your real Dock settings, stays out of the main Dock’s way, and runs without adding another icon to the macOS Dock.
 
 <p align="center">
-  <a href="https://github.com/ArioMoniri/moredock/releases/latest/download/MoreDock-0.2.3-macOS.dmg">
+  <a href="https://github.com/ArioMoniri/moredock/releases/latest/download/MoreDock-0.3.0-macOS.dmg">
     <img src="docs/images/download-for-macos.svg" alt="Download for macOS" height="56">
   </a>
 </p>
@@ -30,7 +30,7 @@ It follows your real Dock settings, stays out of the main Dock’s way, and runs
 
 ## Current Release 🚀
 
-Latest release: [MoreDock 0.2.3](https://github.com/ArioMoniri/moredock/releases/latest)
+Latest release: [MoreDock 0.3.0](https://github.com/ArioMoniri/moredock/releases/latest)
 
 Highlights:
 
@@ -48,7 +48,7 @@ Highlights:
 Download the latest `.dmg`:
 
 <p align="center">
-  <a href="https://github.com/ArioMoniri/moredock/releases/latest/download/MoreDock-0.2.3-macOS.dmg">
+  <a href="https://github.com/ArioMoniri/moredock/releases/latest/download/MoreDock-0.3.0-macOS.dmg">
     <img src="docs/images/download-for-macos.svg" alt="Download for macOS" height="56">
   </a>
 </p>
