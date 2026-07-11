@@ -8,6 +8,7 @@ struct DockRuntimeSettings: Equatable {
     var magnification: Bool
     var opacity: Double
     var liquidGlass: Bool
+    var showRunningIndicators: Bool
     var autoHide: Bool
     var autoHideDelay: Double
     var autoHideDuration: Double
@@ -24,6 +25,7 @@ struct DockRuntimeSettings: Equatable {
         magnification = settings.magnification
         opacity = settings.opacity
         liquidGlass = settings.liquidGlass
+        showRunningIndicators = settings.showRunningIndicators
         autoHide = settings.autoHide
         autoHideDelay = 0.05
         autoHideDuration = 0.20
@@ -48,6 +50,7 @@ enum SystemDockPreferences {
         runtime.edge = edge(from: string("orientation")) ?? runtime.edge
         runtime.iconSize = clamped(double("tilesize"), defaultValue: runtime.iconSize, range: 24...96)
         runtime.magnification = bool("magnification") ?? runtime.magnification
+        runtime.showRunningIndicators = bool("show-process-indicators") ?? runtime.showRunningIndicators
         runtime.magnifiedIconSize = clamped(
             double("largesize"),
             defaultValue: max(runtime.iconSize * 1.25, runtime.iconSize + 10),
@@ -190,6 +193,11 @@ enum SystemDockPreferences {
     static var nativeMagnification: Bool {
         synchronize()
         return bool("magnification") ?? true
+    }
+
+    static var nativeShowRunningIndicators: Bool {
+        synchronize()
+        return bool("show-process-indicators") ?? true
     }
 
     static var nativeAutoHide: Bool {

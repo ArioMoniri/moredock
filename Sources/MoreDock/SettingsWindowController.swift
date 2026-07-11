@@ -15,6 +15,9 @@ final class SettingsWindowController: NSWindowController {
         window.center()
         window.title = "MoreDock Settings"
         window.titlebarAppearsTransparent = true
+        // The content scrolls under the transparent title bar; hiding the title text
+        // stops "MoreDock Settings" from overlapping the top of the content.
+        window.titleVisibility = .hidden
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 800, height: 600)
         window.contentView = hosting
@@ -30,16 +33,36 @@ struct SettingsView: View {
     @ObservedObject var settings: SettingsStore
     var onCheckForUpdates: (() -> Void)?
 
-    /// A binding that applies a value immediately and detaches from "Follow native
-    /// Dock" so the edit actually takes effect instead of being overridden by the
-    /// system Dock. Keeps every appearance control live and editable.
+    /// Snapshots the live native Dock values into the editable settings and turns
+    /// off "Follow native Dock", so editing one control does not snap the others
+    /// back to stale stored defaults.
+    private func detachFromNative() {
+        guard settings.followSystemDock else { return }
+        settings.adoptNativeDockValues()
+        settings.followSystemDock = false
+    }
+
+    /// While following the native Dock, the getter reflects the real native value so
+    /// the control matches reality; editing snapshots native and detaches.
+    private func mirrored<Value>(
+        _ keyPath: ReferenceWritableKeyPath<SettingsStore, Value>,
+        native: @autoclosure @escaping () -> Value
+    ) -> Binding<Value> {
+        Binding {
+            settings.followSystemDock ? native() : settings[keyPath: keyPath]
+        } set: { newValue in
+            detachFromNative()
+            settings[keyPath: keyPath] = newValue
+        }
+    }
+
+    /// A binding that applies a value and detaches from "Follow native Dock" so the
+    /// edit takes effect (used for controls with no native equivalent).
     private func detach<Value>(_ keyPath: ReferenceWritableKeyPath<SettingsStore, Value>) -> Binding<Value> {
         Binding {
             settings[keyPath: keyPath]
         } set: { newValue in
-            if settings.followSystemDock {
-                settings.followSystemDock = false
-            }
+            detachFromNative()
             settings[keyPath: keyPath] = newValue
         }
     }
@@ -90,14 +113,14 @@ struct SettingsView: View {
                             SettingsSection("Appearance") {
                                 VStack(alignment: .leading, spacing: 11) {
                                     if settings.followSystemDock {
-                                        Text("Mirroring your macOS Dock. Editing anything here switches to your own settings.")
+                                        Text("Showing your macOS Dock values. Editing anything here switches to your own settings for every MoreDock.")
                                             .font(.caption2)
                                             .foregroundStyle(.secondary)
                                             .frame(maxWidth: .infinity, alignment: .leading)
                                     }
 
                                     SettingsPickerRow("Edge") {
-                                        Picker("Edge", selection: detach(\.edge)) {
+                                        Picker("Edge", selection: mirrored(\.edge, native: SystemDockPreferences.nativeEdge)) {
                                             ForEach(DockEdge.allCases) { edge in
                                                 Text(edge.title).tag(edge)
                                             }
@@ -107,10 +130,11 @@ struct SettingsView: View {
                                         .frame(width: 190)
                                     }
 
-                                    SettingsSliderRow(title: "Icon size", value: detach(\.iconSize), range: 32...72, step: 2, suffix: "")
+                                    SettingsSliderRow(title: "Icon size", value: mirrored(\.iconSize, native: SystemDockPreferences.nativeIconSize), range: 32...72, step: 2, suffix: "")
                                     SettingsSliderRow(title: "Opacity", value: $settings.opacity, range: 0.45...1.0, step: 0.01, suffix: "%")
-                                    SettingsToggleRow("Magnification", isOn: detach(\.magnification))
-                                    SettingsToggleRow("Auto-hide", isOn: detach(\.autoHide))
+                                    SettingsToggleRow("Magnification", isOn: mirrored(\.magnification, native: SystemDockPreferences.nativeMagnification))
+                                    SettingsToggleRow("Auto-hide", isOn: mirrored(\.autoHide, native: SystemDockPreferences.nativeAutoHide))
+                                    SettingsToggleRow("Running indicators", isOn: mirrored(\.showRunningIndicators, native: SystemDockPreferences.nativeShowRunningIndicators))
                                     SettingsToggleRow("Glass material", isOn: $settings.liquidGlass)
                                 }
                             }
@@ -360,36 +384,46 @@ private struct DisplaySettingsSection: View {
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Toggle("Show", isOn: binding(display.id, \.isEnabled))
-                    .labelsHidden()
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
+                if !display.isNativeDockScreen {
+                    Toggle("Show", isOn: binding(display.id, \.isEnabled))
+                        .labelsHidden()
+                        .toggleStyle(.switch)
+                        .controlSize(.small)
+                }
             }
 
-            SettingsToggleRow("Customize", isOn: customizeBinding(display))
-
-            if customizing {
-                SettingsPickerRow("Location") {
-                    Picker("Location", selection: binding(display.id, \.edge)) {
-                        ForEach(DockEdge.allCases) { edge in
-                            Text(edge.title).tag(edge)
-                        }
-                    }
-                    .labelsHidden()
-                    .pickerStyle(.segmented)
-                    .frame(width: 190)
-                }
-
-                SettingsSliderRow(title: "Icon size", value: binding(display.id, \.iconSize), range: 18...96, step: 1, suffix: "")
-                SettingsSliderRow(title: "Opacity", value: binding(display.id, \.opacity), range: 0.45...1.0, step: 0.01, suffix: "%")
-                SettingsToggleRow("Auto-hide", isOn: binding(display.id, \.autoHide))
-                SettingsToggleRow("Magnification", isOn: binding(display.id, \.magnification))
-                SettingsToggleRow("Avoid junctions", isOn: binding(display.id, \.avoidDisplayJunctions))
-            } else {
-                Text("Following global settings \u{2022} Location: \(display.effectiveEdge.title)")
+            if display.isNativeDockScreen {
+                Text("Shows the macOS Dock, so MoreDock stays hidden here.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                SettingsToggleRow("Customize", isOn: customizeBinding(display))
+
+                if customizing {
+                    SettingsPickerRow("Location") {
+                        Picker("Location", selection: binding(display.id, \.edge)) {
+                            ForEach(display.usableEdges) { edge in
+                                Text(edge.title).tag(edge)
+                            }
+                        }
+                        .labelsHidden()
+                        .pickerStyle(.segmented)
+                        .frame(width: 190)
+                    }
+
+                    SettingsSliderRow(title: "Icon size", value: binding(display.id, \.iconSize), range: 18...96, step: 1, suffix: "")
+                    SettingsSliderRow(title: "Opacity", value: binding(display.id, \.opacity), range: 0.45...1.0, step: 0.01, suffix: "%")
+                    SettingsToggleRow("Auto-hide", isOn: binding(display.id, \.autoHide))
+                    SettingsToggleRow("Magnification", isOn: binding(display.id, \.magnification))
+                    SettingsToggleRow("Running indicators", isOn: binding(display.id, \.showRunningIndicators))
+                    SettingsToggleRow("Avoid junctions", isOn: binding(display.id, \.avoidDisplayJunctions))
+                } else {
+                    Text("Following global settings \u{2022} Location: \(display.effectiveEdge.title)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
     }
@@ -398,6 +432,9 @@ private struct DisplaySettingsSection: View {
         let primaryID = CGMainDisplayID()
         let allScreens = NSScreen.screens
         let globalEdge = DockPlacement.globalEdge(for: settings)
+        let nativeDockScreens: Set<NSNumber> = (settings.followSystemDock && settings.hideOnNativeDockScreen)
+            ? SystemDockPreferences.nativeDockScreenNumbers(for: allScreens, edge: globalEdge)
+            : []
         var externalIndex = 0
         return allScreens.compactMap { screen -> DisplayRow? in
             guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else {
@@ -416,17 +453,25 @@ private struct DisplaySettingsSection: View {
             let pixels = "\(Int(screen.frame.width * scale))\u{00D7}\(Int(screen.frame.height * scale))"
             let localizedName = screen.localizedName
             let detail = localizedName.isEmpty ? "\(pixels) \u{2022} ID \(number.stringValue)" : "\(localizedName) \u{2022} \(pixels)"
+            let displaySettings = settings.settingsForDisplay(number.stringValue)
             let effectiveEdge = DockPlacement.resolvedEdge(
                 globalEdge: globalEdge,
-                displaySettings: settings.settingsForDisplay(number.stringValue),
+                displaySettings: displaySettings,
                 screen: screen,
                 allScreens: allScreens
             )
+            // Only offer edges the dock will actually stay on. With junction
+            // avoidance on, a shared edge gets moved, so hide it as a choice.
+            let usable = DockEdge.allCases.filter { edge in
+                !(displaySettings.avoidDisplayJunctions && DockPlacement.isEdgeShared(edge, of: screen, with: allScreens))
+            }
             return DisplayRow(
                 id: number.stringValue,
                 name: name,
                 detail: detail,
-                effectiveEdge: effectiveEdge
+                effectiveEdge: effectiveEdge,
+                usableEdges: usable.isEmpty ? DockEdge.allCases : usable,
+                isNativeDockScreen: nativeDockScreens.contains(number)
             )
         }
     }
@@ -467,6 +512,8 @@ private struct DisplaySettingsSection: View {
         let name: String
         let detail: String
         let effectiveEdge: DockEdge
+        let usableEdges: [DockEdge]
+        let isNativeDockScreen: Bool
     }
 }
 

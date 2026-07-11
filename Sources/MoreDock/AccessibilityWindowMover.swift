@@ -28,19 +28,23 @@ enum AccessibilityWindowMover {
         NSWorkspace.shared.open(url)
     }
 
-    static func moveWindows(for processIdentifier: pid_t, to visibleFrame: NSRect, prompt: Bool = false) {
-        guard isTrusted(prompt: prompt) else { return }
+    @discardableResult
+    static func moveWindows(for processIdentifier: pid_t, to visibleFrame: NSRect, prompt: Bool = false) -> Int {
+        guard isTrusted(prompt: prompt) else { return 0 }
 
         let appElement = AXUIElementCreateApplication(processIdentifier)
         var windowsValue: CFTypeRef?
         guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsValue) == .success,
               let windows = windowsValue as? [AXUIElement] else {
-            return
+            return 0
         }
 
+        var moved = 0
         for window in windows.prefix(8) {
             move(window: window, to: visibleFrame)
+            moved += 1
         }
+        return moved
     }
 
     private static func move(window: AXUIElement, to visibleFrame: NSRect) {
@@ -142,8 +146,17 @@ final class AccessibilityMoveCoordinator {
 
     private func performMoves(pid: pid_t, frame: NSRect) {
         for attempt in 1...14 {
+            let isLastAttempt = attempt == 14
             DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.16) {
-                AccessibilityWindowMover.moveWindows(for: pid, to: frame)
+                let moved = AccessibilityWindowMover.moveWindows(for: pid, to: frame)
+                guard isLastAttempt else { return }
+                Task { @MainActor in
+                    if moved > 0 {
+                        mdLog("Clicked Display: moved \(moved) window(s) of pid \(pid) to the clicked screen.")
+                    } else {
+                        mdLog("Clicked Display: no movable windows found for pid \(pid). The app may block Accessibility window moves, or it has no standard windows.", level: .warn)
+                    }
+                }
             }
         }
     }
