@@ -105,6 +105,25 @@ enum SystemDockPreferences {
         return numbers
     }
 
+    /// Confident detection only — a visible Dock window or a reserved Dock area.
+    /// Returns an empty set when the Dock cannot be located (e.g. it is auto-hidden),
+    /// so callers can hold on to a last-known value instead of flickering to a
+    /// fallback and hiding/showing panels.
+    static func detectedNativeDockScreenNumbers(for screens: [NSScreen], edge: DockEdge) -> Set<NSNumber> {
+        var numbers = Set<NSNumber>()
+        for screen in dockWindowScreens(for: screens) {
+            if let number = screenNumber(of: screen) {
+                numbers.insert(number)
+            }
+        }
+        for screen in screens where hasReservedDockArea(screen, edge: edge) {
+            if let number = screenNumber(of: screen) {
+                numbers.insert(number)
+            }
+        }
+        return numbers
+    }
+
     private static func hasReservedDockArea(_ screen: NSScreen, edge: DockEdge) -> Bool {
         switch edge {
         case .bottom:

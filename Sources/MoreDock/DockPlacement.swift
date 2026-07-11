@@ -30,7 +30,15 @@ enum DockPlacement {
         case .right:
             edge = isEdgeShared(.left, of: screen, with: allScreens) ? .bottom : .left
         case .bottom:
-            edge = .bottom
+            // A shared bottom edge (a display directly below/at the junction) moves
+            // to a free side edge so the dock is not stuck on the seam.
+            if !isEdgeShared(.left, of: screen, with: allScreens) {
+                edge = .left
+            } else if !isEdgeShared(.right, of: screen, with: allScreens) {
+                edge = .right
+            } else {
+                edge = .bottom
+            }
         }
         return edge
     }

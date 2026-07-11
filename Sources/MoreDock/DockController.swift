@@ -65,6 +65,9 @@ final class DockController {
     private var cachedNativeDockScreens: Set<NSNumber> = []
     private var cachedGlobalEdge: DockEdge = .bottom
     private var heavyRecomputeCounter = 0
+    // Last confidently-detected macOS Dock display. Held across ticks so an
+    // auto-hidden Dock (which can't be detected) doesn't make panels flicker.
+    private var lastKnownNativeDockScreens: Set<NSNumber>?
 
     init(settings: SettingsStore) {
         self.settings = settings
@@ -271,10 +274,31 @@ final class DockController {
             // "following" it, so hiding on that display must not depend on
             // followSystemDock — otherwise editing an appearance control (which turns
             // followSystemDock off) makes MoreDock draw a duplicate dock on the main
-            // display. Detect using the real Dock orientation.
-            cachedNativeDockScreens = settings.hideOnNativeDockScreen
-                ? SystemDockPreferences.nativeDockScreenNumbers(for: NSScreen.screens, edge: SystemDockPreferences.nativeEdge)
-                : []
+            // display.
+            //
+            // Detection is confident-only (empty when the Dock is auto-hidden). Hold
+            // the last confident result so an auto-hidden Dock doesn't flip the
+            // excluded display and make panels flicker; default to the primary the
+            // first time nothing is detected.
+            if settings.hideOnNativeDockScreen {
+                let detected = SystemDockPreferences.detectedNativeDockScreenNumbers(
+                    for: NSScreen.screens,
+                    edge: SystemDockPreferences.nativeEdge
+                )
+                if !detected.isEmpty {
+                    lastKnownNativeDockScreens = detected
+                } else if lastKnownNativeDockScreens == nil {
+                    if let primary = SystemDockPreferences.primaryDisplayScreen()?.screenNumber {
+                        lastKnownNativeDockScreens = [primary]
+                    } else {
+                        lastKnownNativeDockScreens = []
+                    }
+                }
+                cachedNativeDockScreens = lastKnownNativeDockScreens ?? []
+            } else {
+                cachedNativeDockScreens = []
+                lastKnownNativeDockScreens = nil
+            }
         }
         let runtimeSettings = cachedRuntimeSettings ?? SystemDockPreferences.runtimeSettings(fallback: settings)
         let nativeDockScreenNumbers = cachedNativeDockScreens
@@ -358,6 +382,8 @@ final class DockController {
     }
 
     @objc private func screenParametersChanged() {
+        // Displays changed — re-detect the Dock display from scratch.
+        lastKnownNativeDockScreens = nil
         logScreens()
         refreshAll()
     }
