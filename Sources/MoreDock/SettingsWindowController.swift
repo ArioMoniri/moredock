@@ -88,7 +88,6 @@ struct SettingsView: View {
                                     SettingsToggleRow("Show on all displays", isOn: $settings.showOnAllDisplays)
                                     SettingsToggleRow("Follow native Dock", isOn: $settings.followSystemDock)
                                     SettingsToggleRow("Hide on Dock display", isOn: $settings.hideOnNativeDockScreen)
-                                        .disabled(!settings.followSystemDock)
                                     SettingsToggleRow("Respect menu bar", isOn: $settings.respectMenuBarSafeArea)
                                     SettingsToggleRow("Avoid display junctions", isOn: $settings.avoidDisplayJunctions)
                                     SettingsPickerRow("Open apps on") {
@@ -489,8 +488,8 @@ private struct DisplaySettingsSection: View {
         let primaryID = CGMainDisplayID()
         let allScreens = NSScreen.screens
         let globalEdge = DockPlacement.globalEdge(for: settings)
-        let nativeDockScreens: Set<NSNumber> = (settings.followSystemDock && settings.hideOnNativeDockScreen)
-            ? SystemDockPreferences.nativeDockScreenNumbers(for: allScreens, edge: globalEdge)
+        let nativeDockScreens: Set<NSNumber> = settings.hideOnNativeDockScreen
+            ? SystemDockPreferences.nativeDockScreenNumbers(for: allScreens, edge: SystemDockPreferences.nativeEdge)
             : []
         var externalIndex = 0
         return allScreens.compactMap { screen -> DisplayRow? in
