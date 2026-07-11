@@ -37,8 +37,13 @@ final class DockPanelController {
     private let screenNumber: DisplayID
     private var isRevealed = true
     private var revealRequestedAt: Date?
+    private var hideRequestedAt: Date?
     private var hasPositioned = false
     private var lastStateSignature = ""
+    /// Grace period the pointer may leave the dock before an auto-hidden panel
+    /// slides back out. Prevents the reveal from flickering when the pointer
+    /// skims just past the edge while the panel is still animating in.
+    private let hideGrace: TimeInterval = 0.35
 
     init(screenNumber: DisplayID) {
         self.screenNumber = screenNumber
@@ -65,9 +70,12 @@ final class DockPanelController {
         let snapshot = SnapshotSettings(settings)
         hostingView.rootView = DockPanelView(apps: apps, settings: snapshot, targetVisibleFrame: screen.visibleFrame, actions: actions)
 
-        updateRevealState(screen: screen, settings: snapshot, now: now)
+        // The dock's on-screen (revealed) rectangle, used both for hit-testing the
+        // pointer during auto-hide and as the panel's target when revealed.
+        let revealedFrame = frame(for: screen, apps: apps, settings: snapshot, revealed: true)
+        updateRevealState(screen: screen, revealedFrame: revealedFrame, settings: snapshot, now: now)
 
-        let targetFrame = frame(for: screen, apps: apps, settings: snapshot, revealed: isRevealed)
+        let targetFrame = isRevealed ? revealedFrame : frame(for: screen, apps: apps, settings: snapshot, revealed: false)
         let targetAlpha: CGFloat = isRevealed ? 1.0 : 0.0
 
         if !hasPositioned {
@@ -174,16 +182,24 @@ final class DockPanelController {
         }
     }
 
-    private func updateRevealState(screen: NSScreen, settings: SnapshotSettings, now: Date) {
+    private func updateRevealState(screen: NSScreen, revealedFrame: NSRect, settings: SnapshotSettings, now: Date) {
         guard settings.autoHide else {
             isRevealed = true
             revealRequestedAt = nil
+            hideRequestedAt = nil
             return
         }
 
         let mouse = NSEvent.mouseLocation
-        let wantsReveal = screen.frame.contains(mouse) && isMouseNearDockEdge(mouse, screen: screen, settings: settings)
-        if wantsReveal || panel.frame.insetBy(dx: -8, dy: -8).contains(mouse) {
+        // Reveal when the pointer sits at the screen edge, or is anywhere over the
+        // dock's on-screen rectangle. Hit-testing the *revealed* frame (not the
+        // panel's live frame) keeps the dock up while it is still sliding in, so a
+        // pointer resting on it never triggers an immediate re-hide.
+        let overDock = revealedFrame.insetBy(dx: -10, dy: -10).contains(mouse)
+        let atEdge = screen.frame.contains(mouse) && isMouseNearDockEdge(mouse, screen: screen, settings: settings)
+
+        if overDock || atEdge {
+            hideRequestedAt = nil
             if revealRequestedAt == nil {
                 revealRequestedAt = now
             }
@@ -192,7 +208,14 @@ final class DockPanelController {
             }
         } else {
             revealRequestedAt = nil
-            isRevealed = false
+            // Hold the dock open through a short grace period so a pointer that
+            // skims past the edge doesn't make it flicker.
+            if hideRequestedAt == nil {
+                hideRequestedAt = now
+            }
+            if now.timeIntervalSince(hideRequestedAt ?? now) >= hideGrace {
+                isRevealed = false
+            }
         }
     }
 
@@ -441,35 +464,49 @@ private struct DockIconButton: View {
             }
         }
 
-        if let processIdentifier = item.processIdentifier,
-           let app = NSRunningApplication(processIdentifier: processIdentifier) {
-            app.activate(options: [.activateAllWindows])
-            moveAfterActivation(processIdentifier)
-            return
-        }
-
-        if let bundleIdentifier = item.bundleIdentifier,
-           let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleIdentifier) ?? item.url {
-            let configuration = NSWorkspace.OpenConfiguration()
-            configuration.activates = true
-            NSWorkspace.shared.openApplication(at: url, configuration: configuration) { app, _ in
-                if let processIdentifier = app?.processIdentifier {
-                    moveAfterActivation(processIdentifier)
-                } else {
-                    for attempt in 1...14 {
-                        DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.20) {
-                            if let processIdentifier = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier {
-                                moveAfterActivation(processIdentifier)
-                            }
-                        }
-                    }
-                }
+        // Folders, stacks, files and Trash just open their target in Finder.
+        if item.kind != .application {
+            if let url = item.url {
+                NSWorkspace.shared.open(url)
             }
             return
         }
 
-        if let url = item.url {
-            NSWorkspace.shared.open(url)
+        // For an application, resolve its bundle URL — preferring the running
+        // instance — and *open* it. Opening an already-running app both activates it
+        // and sends the reopen event, so an app that is running with no open windows
+        // gets a fresh window, exactly like clicking its icon in the native Dock.
+        // (Plain `activate` only raises existing windows and does nothing when there
+        // are none, which is why a windowless-but-running app couldn't be opened.)
+        let runningApp = item.processIdentifier.flatMap(NSRunningApplication.init(processIdentifier:))
+        let appURL = runningApp?.bundleURL
+            ?? item.bundleIdentifier.flatMap(NSWorkspace.shared.urlForApplication(withBundleIdentifier:))
+            ?? item.url
+
+        guard let appURL else {
+            if let processIdentifier = item.processIdentifier,
+               let app = NSRunningApplication(processIdentifier: processIdentifier) {
+                app.activate(options: [.activateAllWindows])
+                moveAfterActivation(processIdentifier)
+            }
+            return
+        }
+
+        let configuration = NSWorkspace.OpenConfiguration()
+        configuration.activates = true
+        let bundleIdentifier = item.bundleIdentifier
+        NSWorkspace.shared.openApplication(at: appURL, configuration: configuration) { app, _ in
+            if let processIdentifier = app?.processIdentifier {
+                moveAfterActivation(processIdentifier)
+            } else if let bundleIdentifier {
+                for attempt in 1...14 {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.20) {
+                        if let processIdentifier = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier {
+                            moveAfterActivation(processIdentifier)
+                        }
+                    }
+                }
+            }
         }
     }
 }

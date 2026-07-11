@@ -27,7 +27,7 @@ struct DockRuntimeSettings: Equatable {
         liquidGlass = settings.liquidGlass
         showRunningIndicators = settings.showRunningIndicators
         autoHide = settings.autoHide
-        autoHideDelay = 0.05
+        autoHideDelay = settings.autoHideDelay
         autoHideDuration = 0.20
         respectMenuBarSafeArea = settings.respectMenuBarSafeArea
         avoidDisplayJunctions = settings.avoidDisplayJunctions
@@ -58,13 +58,9 @@ enum SystemDockPreferences {
         )
         // Do NOT mirror the native Dock's auto-hide onto the extra docks. The extra
         // docks are the whole point of MoreDock, so they stay visible by default;
-        // auto-hide is an explicit MoreDock setting. Only the reveal timing is
-        // borrowed so it feels like macOS when the user does enable auto-hide.
-        runtime.autoHideDelay = clamped(
-            double("autohide-delay"),
-            defaultValue: 0.0,
-            range: 0.0...2.0
-        )
+        // auto-hide is an explicit MoreDock setting, and its reveal delay is the
+        // user's own "Reveal delay" control (already carried on `runtime`). Only the
+        // slide-in animation length is borrowed so it feels like macOS.
         runtime.autoHideDuration = clamped(
             double("autohide-time-modifier"),
             defaultValue: 0.20,

@@ -25,6 +25,9 @@ struct DisplayDockSettings: Codable, Equatable {
     var iconSize = 48.0
     var opacity = 0.82
     var autoHide = false
+    /// Seconds the pointer must rest at the screen edge before an auto-hidden dock
+    /// slides in. 0 = instant; higher values feel like the native Dock's slow reveal.
+    var autoHideDelay = 0.0
     var magnification = true
     var showRunningIndicators = true
     var avoidDisplayJunctions = true
@@ -101,6 +104,12 @@ final class SettingsStore: ObservableObject {
         didSet { save(autoHide, for: Keys.autoHide) }
     }
 
+    /// Seconds the pointer must rest at the screen edge before an auto-hidden dock
+    /// slides in. 0 = instant reveal; higher values feel like the native Dock.
+    @Published var autoHideDelay: Double {
+        didSet { save(autoHideDelay, for: Keys.autoHideDelay) }
+    }
+
     @Published var respectMenuBarSafeArea: Bool {
         didSet { save(respectMenuBarSafeArea, for: Keys.respectMenuBarSafeArea) }
     }
@@ -134,6 +143,7 @@ final class SettingsStore: ObservableObject {
         liquidGlass = defaults.object(forKey: Keys.liquidGlass) as? Bool ?? true
         showRunningIndicators = defaults.object(forKey: Keys.showRunningIndicators) as? Bool ?? true
         autoHide = defaults.object(forKey: Keys.autoHide) as? Bool ?? false
+        autoHideDelay = defaults.object(forKey: Keys.autoHideDelay) as? Double ?? 0.0
         respectMenuBarSafeArea = defaults.object(forKey: Keys.respectMenuBarSafeArea) as? Bool ?? true
         avoidDisplayJunctions = defaults.object(forKey: Keys.avoidDisplayJunctions) as? Bool ?? true
         if let data = defaults.data(forKey: Keys.displaySettings),
@@ -269,6 +279,7 @@ final class SettingsStore: ObservableObject {
         static let liquidGlass = "liquidGlass"
         static let showRunningIndicators = "showRunningIndicators"
         static let autoHide = "autoHide"
+        static let autoHideDelay = "autoHideDelay"
         static let respectMenuBarSafeArea = "respectMenuBarSafeArea"
         static let avoidDisplayJunctions = "avoidDisplayJunctions"
         static let displaySettings = "displaySettings"
