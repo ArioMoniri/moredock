@@ -1,5 +1,34 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
+
+/// Pin/unpin/add callbacks handed to a panel so the dock can edit its own display's
+/// custom app list from a right-click menu or a drag-and-drop.
+struct DockActions {
+    var supportsPinning: Bool = false
+    var isPinned: (DockAppItem) -> Bool = { _ in false }
+    var pin: (DockAppItem, _ allDisplays: Bool) -> Void = { _, _ in }
+    var unpin: (DockAppItem) -> Void = { _ in }
+    var addURL: (URL, _ allDisplays: Bool) -> Void = { _, _ in }
+}
+
+/// Asks whether an added app should go on just this dock or all docks.
+/// Returns true for all docks, false for this dock, nil if cancelled.
+@MainActor
+func promptAddScope(appName: String) -> Bool? {
+    let alert = NSAlert()
+    alert.messageText = "Add \(appName) to Dock"
+    alert.informativeText = "Add it to only this display's dock, or to every dock?"
+    alert.addButton(withTitle: "This Dock")
+    alert.addButton(withTitle: "All Docks")
+    alert.addButton(withTitle: "Cancel")
+    NSApp.activate(ignoringOtherApps: true)
+    switch alert.runModal() {
+    case .alertFirstButtonReturn: return false
+    case .alertSecondButtonReturn: return true
+    default: return nil
+    }
+}
 
 @MainActor
 final class DockPanelController {
@@ -25,14 +54,14 @@ final class DockPanelController {
         panel.hasShadow = false
         panel.ignoresMouseEvents = false
 
-        hostingView = NSHostingView(rootView: DockPanelView(apps: [], settings: SnapshotSettings(), targetVisibleFrame: .zero))
+        hostingView = NSHostingView(rootView: DockPanelView(apps: [], settings: SnapshotSettings(), targetVisibleFrame: .zero, actions: DockActions()))
         hostingView.wantsLayer = true
         panel.contentView = hostingView
     }
 
-    func update(screen: NSScreen, apps: [DockAppItem], settings: DockRuntimeSettings, now: Date) {
+    func update(screen: NSScreen, apps: [DockAppItem], settings: DockRuntimeSettings, actions: DockActions, now: Date) {
         let snapshot = SnapshotSettings(settings)
-        hostingView.rootView = DockPanelView(apps: apps, settings: snapshot, targetVisibleFrame: screen.visibleFrame)
+        hostingView.rootView = DockPanelView(apps: apps, settings: snapshot, targetVisibleFrame: screen.visibleFrame, actions: actions)
 
         updateRevealState(screen: screen, settings: snapshot, now: now)
 
@@ -219,6 +248,7 @@ struct DockPanelView: View {
     let apps: [DockAppItem]
     let settings: SnapshotSettings
     let targetVisibleFrame: NSRect
+    var actions = DockActions()
 
     var body: some View {
         let metrics = DockPanelMetrics(settings: settings, itemCount: apps.count, visibleFrame: targetVisibleFrame)
@@ -227,7 +257,7 @@ struct DockPanelView: View {
             .overlay {
                 stack(spacing: metrics.gap) {
                     ForEach(apps) { item in
-                        DockIconButton(item: item, settings: settings, targetVisibleFrame: targetVisibleFrame, baseIconSize: metrics.iconSize)
+                        DockIconButton(item: item, settings: settings, targetVisibleFrame: targetVisibleFrame, baseIconSize: metrics.iconSize, actions: actions)
                     }
                 }
                 .padding(metrics.padding)
@@ -238,6 +268,28 @@ struct DockPanelView: View {
                     .strokeBorder(.white.opacity(settings.liquidGlass ? 0.34 : 0.16), lineWidth: 1)
             }
             .opacity(settings.opacity)
+            .onDrop(of: [UTType.fileURL], isTargeted: nil) { providers in
+                handleDrop(providers)
+            }
+    }
+
+    private func handleDrop(_ providers: [NSItemProvider]) -> Bool {
+        guard actions.supportsPinning else { return false }
+        var handled = false
+        for provider in providers where provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            handled = true
+            provider.loadDataRepresentation(forTypeIdentifier: UTType.fileURL.identifier) { data, _ in
+                guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+                Task { @MainActor in
+                    guard url.pathExtension.lowercased() == "app" else { return }
+                    let name = url.deletingPathExtension().lastPathComponent
+                    if let allDocks = promptAddScope(appName: name) {
+                        actions.addURL(url, allDocks)
+                    }
+                }
+            }
+        }
+        return handled
     }
 
     @ViewBuilder
@@ -255,7 +307,12 @@ private struct DockIconButton: View {
     let settings: SnapshotSettings
     let targetVisibleFrame: NSRect
     let baseIconSize: CGFloat
+    var actions = DockActions()
     @State private var isHovering = false
+
+    private var canPin: Bool {
+        actions.supportsPinning && item.kind == .application && item.bundleIdentifier != "com.apple.finder"
+    }
 
     var body: some View {
         if item.kind == .separator {
@@ -282,6 +339,16 @@ private struct DockIconButton: View {
         .help(item.name)
         .onHover { isHovering = $0 }
         .accessibilityLabel(item.name)
+        .contextMenu {
+            if canPin {
+                if actions.isPinned(item) {
+                    Button("Remove from This Dock") { actions.unpin(item) }
+                } else {
+                    Button("Keep in This Dock") { actions.pin(item, false) }
+                    Button("Keep in All Docks") { actions.pin(item, true) }
+                }
+            }
+        }
     }
 
     @ViewBuilder

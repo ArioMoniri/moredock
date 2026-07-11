@@ -30,6 +30,27 @@ struct DisplayDockSettings: Codable, Equatable {
     var avoidDisplayJunctions = true
 }
 
+/// A user-pinned application in a specific dock's custom list.
+struct PinnedApp: Codable, Equatable, Identifiable {
+    var id: String
+    var name: String
+    var bundleIdentifier: String?
+    var path: String?
+
+    /// Builds a pin from a dropped or chosen `.app` bundle URL.
+    static func from(url: URL) -> PinnedApp {
+        let bundleIdentifier = Bundle(url: url)?.bundleIdentifier
+        let displayName = FileManager.default.displayName(atPath: url.path)
+        let name = displayName.hasSuffix(".app") ? String(displayName.dropLast(4)) : displayName
+        return PinnedApp(
+            id: bundleIdentifier ?? url.path,
+            name: name.isEmpty ? url.deletingPathExtension().lastPathComponent : name,
+            bundleIdentifier: bundleIdentifier,
+            path: url.path
+        )
+    }
+}
+
 @MainActor
 final class SettingsStore: ObservableObject {
     @Published var isEnabled: Bool {
@@ -92,6 +113,13 @@ final class SettingsStore: ObservableObject {
         didSet { saveDisplaySettings() }
     }
 
+    /// Per-display custom pinned app lists. A missing entry means that display
+    /// mirrors the native Dock's pinned apps; a present entry (even empty) means the
+    /// display has its own independent list.
+    @Published var customDockApps: [String: [PinnedApp]] {
+        didSet { saveCustomDockApps() }
+    }
+
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         isEnabled = defaults.object(forKey: Keys.isEnabled) as? Bool ?? true
@@ -113,6 +141,12 @@ final class SettingsStore: ObservableObject {
             displaySettings = decoded
         } else {
             displaySettings = [:]
+        }
+        if let data = defaults.data(forKey: Keys.customDockApps),
+           let decoded = try? JSONDecoder().decode([String: [PinnedApp]].self, from: data) {
+            customDockApps = decoded
+        } else {
+            customDockApps = [:]
         }
     }
 
@@ -151,6 +185,52 @@ final class SettingsStore: ObservableObject {
         defaults.set(data, forKey: Keys.displaySettings)
     }
 
+    // MARK: - Per-dock pinned apps
+
+    /// The custom list for a display, or nil when it mirrors the native Dock.
+    func customPins(for displayID: String) -> [PinnedApp]? {
+        customDockApps[displayID]
+    }
+
+    func hasCustomPins(_ displayID: String) -> Bool {
+        customDockApps[displayID] != nil
+    }
+
+    /// Adds `app` to each display in `displayIDs`. A display with no custom list yet
+    /// is seeded from `nativePins` first so its existing native apps are kept.
+    func pin(_ app: PinnedApp, toDisplays displayIDs: [String], seededWith nativePins: [PinnedApp]) {
+        var copy = customDockApps
+        for target in displayIDs {
+            var list = copy[target] ?? nativePins
+            if !list.contains(where: { $0.id == app.id }) {
+                list.append(app)
+            }
+            copy[target] = list
+        }
+        customDockApps = copy
+    }
+
+    func unpin(_ id: String, from displayID: String, seededWith nativePins: [PinnedApp]) {
+        var copy = customDockApps
+        var list = copy[displayID] ?? nativePins
+        list.removeAll { $0.id == id }
+        copy[displayID] = list
+        customDockApps = copy
+    }
+
+    /// Drops a display's custom list so it mirrors the native Dock again.
+    func resetPins(for displayID: String) {
+        guard customDockApps[displayID] != nil else { return }
+        var copy = customDockApps
+        copy[displayID] = nil
+        customDockApps = copy
+    }
+
+    private func saveCustomDockApps() {
+        guard let data = try? JSONEncoder().encode(customDockApps) else { return }
+        defaults.set(data, forKey: Keys.customDockApps)
+    }
+
     private enum Keys {
         static let isEnabled = "isEnabled"
         static let showOnAllDisplays = "showOnAllDisplays"
@@ -167,5 +247,6 @@ final class SettingsStore: ObservableObject {
         static let respectMenuBarSafeArea = "respectMenuBarSafeArea"
         static let avoidDisplayJunctions = "avoidDisplayJunctions"
         static let displaySettings = "displaySettings"
+        static let customDockApps = "customDockApps"
     }
 }

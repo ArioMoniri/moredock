@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import SwiftUI
+import UniformTypeIdentifiers
 
 typealias DisplayID = NSNumber
 
@@ -46,7 +47,12 @@ struct DockAppItem: Identifiable, Equatable {
 final class DockController {
     private let settings: SettingsStore
     private var panels: [DisplayID: DockPanelController] = [:]
-    private var dockItems: [DockAppItem] = []
+    // Building blocks for each display's dock. Pinned apps are chosen per display
+    // (custom list or native), so items are assembled per display, not shared.
+    private var nativePinnedApps: [DockAppItem] = []
+    private var pinnedOthers: [DockAppItem] = []
+    private var runningApps: [DockAppItem] = []
+    private var lastItemsSignature = ""
     private var cancellables = Set<AnyCancellable>()
     private var refreshTimer: Timer?
     private var appRefreshCounter = 0
@@ -119,21 +125,14 @@ final class DockController {
     }
 
     private func refreshItems() {
-        // Mirror the native Dock layout as closely as possible:
-        //   Finder · pinned apps (in Dock order) · running (unpinned) apps ·
-        //   separator · pinned folders/stacks (Downloads, etc.) · Trash
-        let pinnedApps = SystemDockPreferences.persistentApps()
-        let pinnedOthers = SystemDockPreferences.persistentOthers()
-        let pinnedBundleIDs = Set(pinnedApps.compactMap(\.bundleIdentifier))
-
-        let runningItems: [DockAppItem] = NSWorkspace.shared.runningApplications
+        nativePinnedApps = SystemDockPreferences.persistentApps()
+        pinnedOthers = SystemDockPreferences.persistentOthers()
+        runningApps = NSWorkspace.shared.runningApplications
             .filter { app in
-                app.activationPolicy == .regular && !app.isTerminated
+                app.activationPolicy == .regular && !app.isTerminated && app.bundleIdentifier != "com.apple.finder"
             }
             .compactMap { app -> DockAppItem? in
                 let bundleID = app.bundleIdentifier
-                if bundleID == "com.apple.finder" { return nil }
-                if let bundleID, pinnedBundleIDs.contains(bundleID) { return nil }
                 let identifier = bundleID ?? "pid-\(app.processIdentifier)"
                 let name = app.localizedName ?? identifier
                 let icon = app.icon ?? NSImage(systemSymbolName: "app.dashed", accessibilityDescription: name) ?? NSImage()
@@ -149,25 +148,110 @@ final class DockController {
                 )
             }
 
+        let signature = "\(nativePinnedApps.count)|\(pinnedOthers.count)|\(runningApps.map(\.id).joined(separator: ","))"
+        if signature != lastItemsSignature {
+            lastItemsSignature = signature
+            mdLog("Dock items refreshed: \(nativePinnedApps.count) native pinned apps, \(runningApps.count) running, \(pinnedOthers.count) folders/stacks.")
+        }
+    }
+
+    /// The ordered tiles for one display: Finder, that display's pinned apps
+    /// (custom list or native), running (unpinned) apps, separator, folders/stacks,
+    /// and Trash.
+    private func dockItems(for displayID: String) -> [DockAppItem] {
+        let pinned: [DockAppItem]
+        if let custom = settings.customPins(for: displayID) {
+            pinned = custom.compactMap(resolvePinned)
+        } else {
+            pinned = nativePinnedApps.filter { $0.bundleIdentifier != "com.apple.finder" }
+        }
+        let pinnedIDs = Set(pinned.map(\.id))
+        let running = runningApps.filter { !pinnedIDs.contains($0.id) }
+
         var items: [DockAppItem] = []
         items.append(SystemDockPreferences.finderItem())
-        items.append(contentsOf: pinnedApps.filter { $0.bundleIdentifier != "com.apple.finder" })
-        items.append(contentsOf: runningItems)
+        items.append(contentsOf: pinned.filter { $0.bundleIdentifier != "com.apple.finder" })
+        items.append(contentsOf: running)
         items.append(.separator(id: "moredock.separator.apps"))
         items.append(contentsOf: pinnedOthers)
         items.append(SystemDockPreferences.trashItem())
 
         var seen = Set<String>()
-        let deduped = items.filter { item in
-            guard !seen.contains(item.id) else { return false }
-            seen.insert(item.id)
-            return true
+        return items.filter { seen.insert($0.id).inserted }
+    }
+
+    private func resolvePinned(_ pin: PinnedApp) -> DockAppItem? {
+        var url: URL?
+        if let bundleID = pin.bundleIdentifier {
+            url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID)
+        }
+        if url == nil, let path = pin.path {
+            url = URL(fileURLWithPath: path)
         }
 
-        if deduped.map(\.id) != dockItems.map(\.id) {
-            mdLog("Dock items: \(deduped.count) tiles (\(pinnedApps.count) pinned apps, \(runningItems.count) running, \(pinnedOthers.count) folders/stacks).")
+        let icon: NSImage
+        if let url, FileManager.default.fileExists(atPath: url.path) {
+            icon = NSWorkspace.shared.icon(forFile: url.path)
+        } else {
+            icon = NSWorkspace.shared.icon(for: .applicationBundle)
         }
-        dockItems = deduped
+        let pid = pin.bundleIdentifier.flatMap {
+            NSRunningApplication.runningApplications(withBundleIdentifier: $0).first?.processIdentifier
+        }
+        return DockAppItem(
+            id: pin.id,
+            name: pin.name,
+            bundleIdentifier: pin.bundleIdentifier,
+            url: url,
+            icon: icon,
+            processIdentifier: pid,
+            kind: .application,
+            isRunning: pid != nil
+        )
+    }
+
+    private func nativePins() -> [PinnedApp] {
+        nativePinnedApps
+            .filter { $0.bundleIdentifier != "com.apple.finder" }
+            .map { PinnedApp(id: $0.id, name: $0.name, bundleIdentifier: $0.bundleIdentifier, path: $0.url?.path) }
+    }
+
+    // MARK: - Pin actions (wired into each panel)
+
+    private func isPinned(_ item: DockAppItem, on displayID: String) -> Bool {
+        if let custom = settings.customPins(for: displayID) {
+            return custom.contains { $0.id == item.id }
+        }
+        return nativePinnedApps.contains { $0.id == item.id }
+    }
+
+    private func targetDisplayIDs(_ displayID: String, allDisplays: Bool) -> [String] {
+        guard allDisplays else { return [displayID] }
+        let all = NSScreen.screens.compactMap { $0.screenNumber?.stringValue }
+        return all.isEmpty ? [displayID] : all
+    }
+
+    private func pin(_ item: DockAppItem, on displayID: String, allDisplays: Bool) {
+        let app = PinnedApp(id: item.id, name: item.name, bundleIdentifier: item.bundleIdentifier, path: item.url?.path)
+        settings.pin(app, toDisplays: targetDisplayIDs(displayID, allDisplays: allDisplays), seededWith: nativePins())
+    }
+
+    private func unpin(_ item: DockAppItem, on displayID: String) {
+        settings.unpin(item.id, from: displayID, seededWith: nativePins())
+    }
+
+    private func addPinnedURL(_ url: URL, on displayID: String, allDisplays: Bool) {
+        settings.pin(PinnedApp.from(url: url), toDisplays: targetDisplayIDs(displayID, allDisplays: allDisplays), seededWith: nativePins())
+    }
+
+    private func actions(for displayID: String) -> DockActions {
+        DockActions(
+            supportsPinning: true,
+            isPinned: { [weak self] item in self?.isPinned(item, on: displayID) ?? false },
+            pin: { [weak self] item, all in self?.pin(item, on: displayID, allDisplays: all) },
+            unpin: { [weak self] item in self?.unpin(item, on: displayID) },
+            addURL: { [weak self] url, all in self?.addPinnedURL(url, on: displayID, allDisplays: all) }
+        )
     }
 
     private func syncPanels() {
@@ -229,13 +313,15 @@ final class DockController {
 
         for screen in targetScreens {
             guard let number = screen.screenNumber else { continue }
+            let displayID = number.stringValue
             let panel = panels[number] ?? DockPanelController(screenNumber: number)
             panels[number] = panel
-            let panelSettings = effectiveSettings(runtimeSettings, for: screen, allScreens: NSScreen.screens, displayID: number.stringValue)
+            let panelSettings = effectiveSettings(runtimeSettings, for: screen, allScreens: NSScreen.screens, displayID: displayID)
             panel.update(
                 screen: screen,
-                apps: dockItems,
+                apps: dockItems(for: displayID),
                 settings: panelSettings,
+                actions: actions(for: displayID),
                 now: Date()
             )
         }

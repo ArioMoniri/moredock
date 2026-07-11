@@ -12,6 +12,8 @@ It follows your real Dock settings, stays out of the main Dock’s way, and runs
 
 ![MoreDock settings](docs/images/moredock-settings.png)
 
+<sub>The **Edge** control shows your actual macOS Dock orientation while *Follow native Dock* is on (this screenshot is illustrative — regenerate it with `swift scripts/render_docs_screenshots.swift` after a UI change).</sub>
+
 ## What It Does ✨
 
 - 🖥️ Adds Dock panels to extra displays.
@@ -22,6 +24,7 @@ It follows your real Dock settings, stays out of the main Dock’s way, and runs
 - 🪟 Can move clicked apps to the display where their MoreDock icon was clicked.
 - 🖱️ Left-click the menu-bar icon to open Settings; right-click for the menu.
 - 🟢 Mirrors the macOS Dock's running-app indicator dots (overridable per display).
+- 📌 Each dock can keep its **own independent app list** — drag an app onto a dock, use **Add App…** in Settings, or right-click an icon to pin/remove it (choose this dock or all docks).
 - 🪵 Built-in Logs window and an Accessibility **Reset** for stale permission entries (Settings ▸ Diagnostics).
 - 🔄 Uses Sparkle for signed app updates from GitHub releases.
 
@@ -110,6 +113,16 @@ The **Open on** setting has two modes:
 - **Clicked Display**: activate the app, then move its windows to the display where the icon was clicked.
 
 Clicked Display uses macOS Accessibility APIs. Apps that block Accessibility window movement may still stay on their original display.
+
+## Custom App Lists 📌
+
+Every dock mirrors the macOS Dock's pinned apps by default. To give a dock its own list:
+
+- **Drag** an app from Finder onto the dock, or
+- Use **Add App…** in Settings ▸ Per-Display Docks, or
+- **Right-click** any dock icon and choose *Keep in This Dock* / *Keep in All Docks* / *Remove from This Dock*.
+
+When you add an app, MoreDock asks whether to add it to just that dock or all docks. Once a dock has a custom list it stops mirroring the macOS Dock; press **Reset** in its Settings row to go back to mirroring.
 
 ## Checksums ✅
 
