@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.3.6
+
+- 🧪 Adds a **Log Dock Diagnostics** menu-bar item (⌘D) that dumps a full snapshot — settings, screens, which macOS Dock display is excluded, and every panel's real window frame, mapped screen, visibility, active-space, alpha, level, and content size — so an invisible dock can be pinpointed.
+- 🩹 Adds a subtle solid backing behind the glass so a dock stays visible even if the blur material renders clear on some displays.
+- 📋 Per-panel logging now reports the panel's actual window frame and whether macOS mapped it to a screen.
+
 ## 0.3.5
 
 - 🩹 Snaps each dock panel into place on first appearance instead of animating it up from a zero-size rect, so a dock can't get stuck invisible.

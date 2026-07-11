@@ -94,11 +94,28 @@ final class DockPanelController {
     }
 
     private func logStateIfChanged(targetFrame: NSRect, apps: Int, autoHide: Bool) {
-        let frameText = "[\(Int(targetFrame.minX)),\(Int(targetFrame.minY)),\(Int(targetFrame.width))x\(Int(targetFrame.height))]"
-        let signature = "\(isRevealed)|\(autoHide)|\(apps)|\(frameText)|\(panel.isVisible)"
+        let actual = panel.frame
+        let frameText = "[\(Int(actual.minX)),\(Int(actual.minY)),\(Int(actual.width))x\(Int(actual.height))]"
+        let onScreen = panel.screen != nil
+        let signature = "\(isRevealed)|\(autoHide)|\(apps)|\(frameText)|\(panel.isVisible)|\(onScreen)"
         guard signature != lastStateSignature else { return }
         lastStateSignature = signature
-        mdLog("Panel #\(screenNumber): revealed=\(isRevealed) autohide=\(autoHide) apps=\(apps) frame=\(frameText) onScreen=\(panel.isVisible) alpha=\(String(format: "%.2f", panel.alphaValue)).")
+        mdLog("Panel #\(screenNumber): revealed=\(isRevealed) autohide=\(autoHide) apps=\(apps) frame=\(frameText) visible=\(panel.isVisible) onActiveSpace=\(panel.isOnActiveSpace) screen=\(onScreen ? "mapped" : "NIL") alpha=\(String(format: "%.2f", panel.alphaValue)).")
+    }
+
+    /// Full point-in-time snapshot of the panel window, used by the "Log Dock
+    /// Diagnostics" dump.
+    func diagnostics() -> String {
+        let f = panel.frame
+        let screenText: String
+        if let screen = panel.screen {
+            let sf = screen.frame
+            screenText = "screen=[\(Int(sf.minX)),\(Int(sf.minY)),\(Int(sf.width))x\(Int(sf.height))]"
+        } else {
+            screenText = "screen=NIL(off every display!)"
+        }
+        let content = panel.contentView?.frame.size ?? .zero
+        return "Panel #\(screenNumber): frame=[\(Int(f.minX)),\(Int(f.minY)),\(Int(f.width))x\(Int(f.height))] \(screenText) visible=\(panel.isVisible) onActiveSpace=\(panel.isOnActiveSpace) alpha=\(String(format: "%.2f", panel.alphaValue)) level=\(panel.level.rawValue) content=\(Int(content.width))x\(Int(content.height)) revealed=\(isRevealed)"
     }
 
     func close() {
@@ -276,6 +293,7 @@ struct DockPanelView: View {
         let metrics = DockPanelMetrics(settings: settings, itemCount: apps.count, visibleFrame: targetVisibleFrame)
 
         DockVisualEffect(liquidGlass: settings.liquidGlass)
+            .background(Color.black.opacity(0.30))
             .overlay {
                 stack(spacing: metrics.gap) {
                     ForEach(apps) { item in

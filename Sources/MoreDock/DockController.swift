@@ -106,6 +106,27 @@ final class DockController {
         syncPanels()
     }
 
+    /// Dumps a full snapshot of the dock state to the log — settings, screens, the
+    /// macOS Dock display being hidden, and every live panel's window state.
+    func logDiagnostics() {
+        mdLog("\u{2500}\u{2500}\u{2500} Dock diagnostics \u{2500}\u{2500}\u{2500}")
+        mdLog(Diagnostics.summaryLine())
+        logScreens()
+        mdLog("settings: enabled=\(settings.isEnabled) showOnAll=\(settings.showOnAllDisplays) follow=\(settings.followSystemDock) hideOnDock=\(settings.hideOnNativeDockScreen) autoHide=\(settings.autoHide) globalEdge=\(cachedGlobalEdge.rawValue)")
+        let hidden = cachedNativeDockScreens.map(\.stringValue).sorted().joined(separator: ",")
+        mdLog("excluded macOS Dock display(s): \(hidden.isEmpty ? "none" : hidden)")
+        if panels.isEmpty {
+            mdLog("No dock panels exist right now — nothing was created for any display.", level: .warn)
+        } else {
+            for key in panels.keys.sorted(by: { $0.intValue < $1.intValue }) {
+                if let panel = panels[key] {
+                    mdLog(panel.diagnostics())
+                }
+            }
+        }
+        mdLog("\u{2500}\u{2500}\u{2500} end diagnostics \u{2500}\u{2500}\u{2500}")
+    }
+
     private func logScreens() {
         let primary = CGMainDisplayID()
         let description = NSScreen.screens.map { screen -> String in
