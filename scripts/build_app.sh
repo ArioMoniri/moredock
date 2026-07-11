@@ -79,9 +79,12 @@ fi
 
 # Code-sign the assembled bundle. macOS will not retain an Accessibility (TCC)
 # grant for an unsigned app, which makes it re-prompt on every launch. Ad-hoc
-# signing lets a local build keep the grant for the life of that build; the
-# release pipeline re-signs with the Developer ID identity for a permanent grant.
-if command -v codesign >/dev/null 2>&1; then
+# signing lets a local build keep the grant for the life of that build.
+#
+# The release pipeline (package_release.sh) signs the bundle itself, so it sets
+# SKIP_BUILD_APP_SIGN to avoid signing twice (a double sign here races the later
+# hdiutil DMG step). This block only runs for standalone `build_app.sh` dev builds.
+if [[ -z "${SKIP_BUILD_APP_SIGN:-}" ]] && command -v codesign >/dev/null 2>&1; then
   if [[ -n "${CODESIGN_IDENTITY:-}" ]]; then
     codesign --force --deep --options runtime --timestamp --sign "${CODESIGN_IDENTITY}" "${APP_PATH}"
   else

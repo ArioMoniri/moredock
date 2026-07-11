@@ -1,5 +1,13 @@
 # Release Notes
 
+## 0.2.3
+
+- 🧭 Fixes the Settings/graphic mismatch: the per-display Location now reflects the **resolved** edge, and the Display Layout map and the Per-Display list always agree.
+- 🧹 Simplifies Settings: one **Customize** toggle per display (seeded from the current location), merges the Appearance and Liquid Glass controls, groups Updates/Accessibility/Logs under **Diagnostics**, and labels the **macOS Dock** section as editing the real system Dock.
+- 🖱️ Left-clicking the menu-bar icon now opens Settings (right-click shows the menu); Settings also opens on first launch and when the app is reopened.
+- 🔁 Adds a **Relaunch** button and clearer guidance for the "granted but still asks" case — macOS only applies an Accessibility grant to a freshly started process.
+- 🔎 Logs the app's code-signature type and continuously logs Accessibility trust changes, so it's obvious whether a grant ever registers and whether the build is properly signed.
+
 ## 0.2.2
 
 - 📦 Gives the DMG installer a proper drag-to-Applications layout with a background, app icon placement, and Applications shortcut.
