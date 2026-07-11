@@ -148,6 +148,38 @@ enum Diagnostics {
         return "Signature: \(authority) — grant should persist after you relaunch once."
     }
 
+    static var bundleIdentifier: String {
+        Bundle.main.bundleIdentifier ?? "com.ariomoniri.moredock"
+    }
+
+    /// Clears MoreDock's Accessibility TCC entry via `tccutil reset`. A stale or
+    /// mismatched entry (left by an earlier build/copy with the same bundle id) can
+    /// silently block the grant so it never turns on no matter how many times it is
+    /// enabled. Resetting removes every entry for this bundle id so the next grant
+    /// starts clean. Returns true if `tccutil` exited successfully.
+    @MainActor
+    @discardableResult
+    static func resetAccessibilityPermission() -> Bool {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        process.arguments = ["reset", "Accessibility", bundleIdentifier]
+        process.standardOutput = Pipe()
+        process.standardError = Pipe()
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            mdLog("Reset Accessibility failed to run tccutil: \(error.localizedDescription)", level: .error)
+            return false
+        }
+        let ok = process.terminationStatus == 0
+        mdLog(ok
+            ? "Reset Accessibility: cleared the TCC entry for \(bundleIdentifier). Grant access again, then Relaunch."
+            : "Reset Accessibility: tccutil exited with status \(process.terminationStatus).",
+            level: ok ? .info : .warn)
+        return ok
+    }
+
     /// Relaunches MoreDock. macOS evaluates Accessibility trust when a process
     /// starts, so a fresh instance is the reliable way to pick up a grant that was
     /// enabled while the app was already running.

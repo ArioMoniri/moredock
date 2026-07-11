@@ -21,7 +21,8 @@ It follows your real Dock settings, stays out of the main Dock’s way, and runs
 - 🧊 Uses a compact glass panel style with no visible Dock icon for MoreDock itself.
 - 🪟 Can move clicked apps to the display where their MoreDock icon was clicked.
 - 🖱️ Left-click the menu-bar icon to open Settings; right-click for the menu.
-- 🪵 Built-in Logs window (Settings ▸ Diagnostics ▸ Logs) for troubleshooting.
+- 🟢 Mirrors the macOS Dock's running-app indicator dots (overridable per display).
+- 🪵 Built-in Logs window and an Accessibility **Reset** for stale permission entries (Settings ▸ Diagnostics).
 - 🔄 Uses Sparkle for signed app updates from GitHub releases.
 
 ## Current Release 🚀
@@ -65,12 +66,23 @@ macOS evaluates Accessibility trust **when a process starts**, so enabling MoreD
 1. In Settings ▸ Diagnostics ▸ **Accessibility**, click **Grant…** and enable MoreDock in Privacy & Security ▸ Accessibility.
 2. Click **Relaunch** (next to Grant…) so a fresh copy picks up the grant.
 
-If it still keeps asking, the cause is almost always the app bundle's signature:
+### If it never turns on no matter how often you grant it
+
+This is almost always a **stale Accessibility entry** left by an earlier build or a duplicate copy with the same bundle id — macOS keeps matching the old entry and ignores the new grant. Fix it:
+
+1. Click **Reset** in Settings ▸ Diagnostics ▸ Accessibility. This runs `tccutil reset Accessibility com.ariomoniri.moredock`, clearing every stale entry.
+2. Click **Grant…**, enable MoreDock, then **Relaunch**.
+
+You can also run the reset yourself:
+
+```sh
+tccutil reset Accessibility com.ariomoniri.moredock
+```
+
+Other causes the **Logs** window (Settings ▸ Diagnostics ▸ Logs) makes obvious via the `Signature:` line:
 
 - **Unsigned / ad-hoc builds** (including local `.build` runs) cannot retain the grant — each launch looks like a new app. Use the signed release `.dmg`.
-- **Translocated copies** (run straight from a quarantined download) change path each launch. Move MoreDock into `/Applications` first.
-
-The Settings ▸ Diagnostics ▸ **Logs** window records the exact bundle path, signature type, and every Accessibility event, which makes these cases obvious.
+- **Translocated copies** (run straight from a quarantined download) change path each launch. Move MoreDock into `/Applications` first, and delete any other copies (e.g. in `~/Downloads`).
 
 ## Native Dock Matching 📐
 
