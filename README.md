@@ -1,8 +1,12 @@
-# MoreDock 🧊
+# MoreDock 🧊🕵️
+
+<p align="center">
+  <img src="docs/images/moredock-hero.svg" alt="MoreDock — a Dock for every display" width="820">
+</p>
 
 MoreDock is a native macOS menu-bar app that adds Dock-style launchers to the displays where macOS does not keep the system Dock.
 
-It follows your real Dock settings, stays out of the main Dock’s way, and runs without adding another icon to the macOS Dock.
+It follows your real Dock settings, stays out of the main Dock’s way, and runs without adding another icon to the macOS Dock. The detective mark (a nod to *Murdoch*) is a reminder of what it does under the hood: it investigates where your windows are and puts them where you clicked.
 
 <p align="center">
   <a href="https://github.com/ArioMoniri/moredock/releases/latest">
@@ -32,7 +36,7 @@ Highlights:
 - 📏 Dock items shrink to fit the available display edge instead of scrolling.
 - ✨ Hidden auto-hide panels are fully transparent and moved outside the screen edge.
 - 🎛️ macOS Dock location, size, zoom, magnification, and auto-hide can be edited from MoreDock.
-- 🖥️ Each external display can be shown/hidden and assigned its own location, size, opacity, auto-hide, magnification, and junction behavior.
+- 🖥️ Every display (including the main one) can be shown/hidden and assigned its own location, size, opacity, auto-hide, magnification, and junction behavior.
 - 🧭 Display-junction avoidance keeps side docks off shared monitor borders by default.
 - 🖱️ Extra docks no longer depend on which display currently has focus.
 - 🔄 Update checks are available from the menu bar and Settings.
@@ -57,6 +61,8 @@ brew install --cask moredock
 ## Permissions 🔐
 
 MoreDock only needs Accessibility permission for **Clicked Display** mode.
+
+The first time you click a MoreDock icon in Clicked Display mode without permission, MoreDock asks for Accessibility access **once** (it will not re-prompt on every click). As soon as you grant it, the window you clicked moves to that display automatically — you do not have to click again. Settings shows a live **Accessibility** status row with a **Grant…** button that opens System Settings directly.
 
 macOS stores that permission against the exact app bundle and signature. If you switch between local debug builds, unsigned builds, and signed release builds, macOS may ask again. For normal use, install the signed release from the `.dmg`, grant Accessibility permission once, then keep using that installed app.
 
@@ -107,4 +113,16 @@ Package locally:
 ./scripts/package_release.sh
 ```
 
+Regenerate the app icon from `Resources/AppIcon.svg` (macOS, needs `librsvg` or `inkscape`):
+
+```sh
+./scripts/generate_icon.sh
+```
+
 Release notes live in [CHANGELOG.md](CHANGELOG.md).
+
+## License 📄
+
+MoreDock is licensed under the [Apache License 2.0](LICENSE).
+
+Copyright © 2026 Ariorad Moniri. See [LICENSE](LICENSE) and [NOTICE](NOTICE) for details.
