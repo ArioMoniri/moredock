@@ -25,6 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         Diagnostics.logStartup()
+        mdLog(settings.persistenceSummary)
         configureStatusItem()
         dockController.start()
         startTrustMonitor()
@@ -50,6 +51,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// Flush any pending settings to disk before the process exits, so a change made
     /// right before quitting is never lost.
     func applicationWillTerminate(_ notification: Notification) {
+        settings.flush()
+    }
+
+    /// Also flush when the app resigns active (e.g. right before Sparkle swaps the
+    /// bundle for an update), so a setting changed moments earlier is on disk.
+    func applicationDidResignActive(_ notification: Notification) {
         settings.flush()
     }
 
