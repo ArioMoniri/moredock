@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.2.5
+
+- ⚡ Fixes auto-hide lag and delayed panels: the expensive native-Dock reads (window list + preferences) are now cached and refreshed about once a second instead of on every 0.12s tick, so the mouse-edge reveal stays responsive.
+- 🧯 Adds an Accessibility **Reset** button (Settings ▸ Diagnostics) that runs `tccutil reset Accessibility` for MoreDock, clearing a stale/duplicate permission entry that can stop the grant from ever turning on.
+- 📝 Documents the stale-permission fix and duplicate-copy cleanup in the README.
+
 ## 0.2.4
 
 - 🧭 The Appearance controls now show the **actual** macOS Dock values (edge, icon size, magnification, auto-hide) while Follow native Dock is on, so the Edge/Auto-hide finally match reality; editing snapshots those values and switches to your own settings.

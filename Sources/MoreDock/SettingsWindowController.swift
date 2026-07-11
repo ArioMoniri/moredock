@@ -733,6 +733,12 @@ private struct SettingsAccessibilityRow: View {
                         }
                     }
                     .controlSize(.small)
+                    Button("Reset") {
+                        Diagnostics.resetAccessibilityPermission()
+                        AccessibilityWindowMover.openAccessibilitySettings()
+                    }
+                    .controlSize(.small)
+                    .help("Clears a stale Accessibility entry for MoreDock, then reopens Settings so you can grant it fresh. Use this if granting never sticks.")
                     Button("Relaunch") {
                         Diagnostics.relaunch()
                     }
@@ -757,7 +763,7 @@ private struct SettingsAccessibilityRow: View {
         if Diagnostics.isDevBuild {
             return "This is a local dev build. After granting, quit and reopen MoreDock. Each rebuild changes the signature and needs a re-grant \u{2014} the signed release keeps it permanently."
         }
-        return "Needed for Clicked Display. Enable MoreDock in the list, then click Relaunch \u{2014} macOS only applies the grant to a freshly started copy. If it still won\u{2019}t stick, remove MoreDock from the list and add it again."
+        return "Needed for Clicked Display. Enable MoreDock in the list, then click Relaunch \u{2014} macOS only applies the grant to a freshly started copy. If it never turns on no matter how often you grant it, click Reset to clear a stale entry, then grant and Relaunch."
     }
 }
 

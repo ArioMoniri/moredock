@@ -52,6 +52,14 @@ final class DockController {
     private var appRefreshCounter = 0
     private var lastPanelSignature = ""
 
+    // Cached results of the expensive native-Dock reads (CGWindowList + CFPreferences).
+    // Recomputed ~1x/second or when settings/screens change, so the 0.12s tick that
+    // drives auto-hide reveal stays cheap and responsive.
+    private var cachedRuntimeSettings: DockRuntimeSettings?
+    private var cachedNativeDockScreens: Set<NSNumber> = []
+    private var cachedGlobalEdge: DockEdge = .bottom
+    private var heavyRecomputeCounter = 0
+
     init(settings: SettingsStore) {
         self.settings = settings
     }
@@ -83,6 +91,8 @@ final class DockController {
     }
 
     func refreshAll() {
+        // Force the cached native-Dock reads to refresh on the next sync.
+        cachedRuntimeSettings = nil
         refreshItems()
         syncPanels()
     }
@@ -167,16 +177,24 @@ final class DockController {
             return
         }
 
-        let runtimeSettings = SystemDockPreferences.runtimeSettings(fallback: settings)
+        heavyRecomputeCounter += 1
+        if cachedRuntimeSettings == nil || heavyRecomputeCounter >= 8 {
+            heavyRecomputeCounter = 0
+            let runtime = SystemDockPreferences.runtimeSettings(fallback: settings)
+            cachedRuntimeSettings = runtime
+            cachedGlobalEdge = DockPlacement.globalEdge(for: settings)
+            cachedNativeDockScreens = (settings.followSystemDock && settings.hideOnNativeDockScreen)
+                ? SystemDockPreferences.nativeDockScreenNumbers(for: NSScreen.screens, edge: runtime.edge)
+                : []
+        }
+        let runtimeSettings = cachedRuntimeSettings ?? SystemDockPreferences.runtimeSettings(fallback: settings)
+        let nativeDockScreenNumbers = cachedNativeDockScreens
+
         var targetScreens = settings.showOnAllDisplays ? NSScreen.screens : [SystemDockPreferences.primaryDisplayScreen()].compactMap { $0 }
-        if settings.followSystemDock, settings.hideOnNativeDockScreen {
-            let nativeDockScreenNumbers = SystemDockPreferences
-                .nativeDockScreenNumbers(for: NSScreen.screens, edge: runtimeSettings.edge)
-            if !nativeDockScreenNumbers.isEmpty {
-                targetScreens.removeAll { screen in
-                    guard let number = screen.screenNumber else { return false }
-                    return nativeDockScreenNumbers.contains(number)
-                }
+        if !nativeDockScreenNumbers.isEmpty {
+            targetScreens.removeAll { screen in
+                guard let number = screen.screenNumber else { return false }
+                return nativeDockScreenNumbers.contains(number)
             }
         }
         targetScreens = targetScreens.filter { screen in
@@ -186,7 +204,7 @@ final class DockController {
 
         let targetNumbers = Set(targetScreens.compactMap(\.screenNumber))
 
-        let globalEdge = DockPlacement.globalEdge(for: settings)
+        let globalEdge = cachedGlobalEdge
         let placements = targetScreens.compactMap { screen -> String? in
             guard let displayID = screen.screenNumber?.stringValue else { return nil }
             let edge = DockPlacement.resolvedEdge(
