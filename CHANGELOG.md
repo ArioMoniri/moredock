@@ -1,5 +1,11 @@
 # Release Notes
 
+## 0.2.2
+
+- 📦 Gives the DMG installer a proper drag-to-Applications layout with a background, app icon placement, and Applications shortcut.
+- ⬇️ Points the README download button directly at the latest DMG asset instead of the generic releases page.
+- 🖼️ Refreshes the README Settings screenshot from the current local app UI.
+
 ## 0.2.1
 
 - 🔏 Code-signs the app in `build_app.sh` (ad-hoc for local builds, Developer ID in the release): unsigned apps cannot retain an Accessibility grant, which was the real cause of the endless re-prompt on local `.build` runs.
