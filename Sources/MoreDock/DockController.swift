@@ -343,6 +343,7 @@ final class DockController {
             guard let displayID = screen.screenNumber?.stringValue else { return nil }
             let edge = DockPlacement.resolvedEdge(
                 globalEdge: globalEdge,
+                globalAvoidJunctions: settings.avoidDisplayJunctions,
                 displaySettings: settings.settingsForDisplay(displayID),
                 screen: screen,
                 allScreens: NSScreen.screens
@@ -396,6 +397,7 @@ final class DockController {
         adjusted.avoidDisplayJunctions = displaySettings.avoidDisplayJunctions
         adjusted.edge = DockPlacement.resolvedEdge(
             globalEdge: settings.edge,
+            globalAvoidJunctions: self.settings.avoidDisplayJunctions,
             displaySettings: displaySettings,
             screen: screen,
             allScreens: allScreens

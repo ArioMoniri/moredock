@@ -256,6 +256,7 @@ private struct DisplayArrangementSection: View {
             let displaySettings = settings.settingsForDisplay(number.stringValue)
             let edge = DockPlacement.resolvedEdge(
                 globalEdge: globalEdge,
+                globalAvoidJunctions: settings.avoidDisplayJunctions,
                 displaySettings: displaySettings,
                 screen: screen,
                 allScreens: screens
@@ -523,14 +524,19 @@ private struct DisplaySettingsSection: View {
             let displaySettings = settings.settingsForDisplay(number.stringValue)
             let effectiveEdge = DockPlacement.resolvedEdge(
                 globalEdge: globalEdge,
+                globalAvoidJunctions: settings.avoidDisplayJunctions,
                 displaySettings: displaySettings,
                 screen: screen,
                 allScreens: allScreens
             )
             // Only offer edges the dock will actually stay on. With junction
-            // avoidance on, a shared edge gets moved, so hide it as a choice.
+            // avoidance on, a shared edge gets moved, so hide it as a choice. A
+            // customized display uses its own toggle; a follower uses the global one.
+            let avoidJunctions = displaySettings.followsGlobalPlacement
+                ? settings.avoidDisplayJunctions
+                : displaySettings.avoidDisplayJunctions
             let usable = DockEdge.allCases.filter { edge in
-                !(displaySettings.avoidDisplayJunctions && DockPlacement.isEdgeShared(edge, of: screen, with: allScreens))
+                !(avoidJunctions && DockPlacement.isEdgeShared(edge, of: screen, with: allScreens))
             }
             return DisplayRow(
                 id: number.stringValue,
