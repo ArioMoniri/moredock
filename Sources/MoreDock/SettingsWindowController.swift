@@ -82,6 +82,7 @@ struct SettingsView: View {
                                     SettingsUpdateRow(onCheckForUpdates: onCheckForUpdates)
                                     SettingsAccessibilityRow()
                                     SettingsLogsRow()
+                                    SettingsCrashRow()
                                 }
                             }
                         }
@@ -815,6 +816,50 @@ private struct SettingsLogsRow: View {
             .controlSize(.small)
         }
         .frame(minHeight: 30)
+    }
+}
+
+private struct SettingsCrashRow: View {
+    @State private var count = CrashReporter.reportCount
+    @State private var copied = false
+
+    var body: some View {
+        HStack(alignment: .center, spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Crash Reports")
+                    .font(.callout.weight(.medium))
+                    .lineLimit(1)
+                Text(count > 0
+                     ? "\(count) report\(count == 1 ? "" : "s") saved. Copy the latest and paste it to report a crash."
+                     : "No crashes recorded. If MoreDock ever quits unexpectedly, reopen it and the report shows up here.")
+                    .font(.caption)
+                    .foregroundStyle(count > 0 ? Color.orange : Color.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer()
+            if count > 0 {
+                HStack(spacing: 6) {
+                    Button(copied ? "Copied" : "Copy Crash Report") {
+                        if let text = CrashReporter.latestReportText() {
+                            NSPasteboard.general.clearContents()
+                            NSPasteboard.general.setString(text, forType: .string)
+                            copied = true
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { copied = false }
+                        }
+                    }
+                    .controlSize(.small)
+                    Button("Show") { CrashReporter.revealInFinder() }
+                        .controlSize(.small)
+                    Button("Clear") {
+                        CrashReporter.clear()
+                        count = CrashReporter.reportCount
+                    }
+                    .controlSize(.small)
+                }
+            }
+        }
+        .frame(minHeight: 30)
+        .onAppear { count = CrashReporter.reportCount }
     }
 }
 

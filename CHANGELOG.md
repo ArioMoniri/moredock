@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.4.3
+
+- 🧰 **Built-in crash collector.** MoreDock now keeps crash reports itself: an uncaught exception is written to a persistent file before the process dies, and on the next launch both that record and the newest system crash report (`.ips`, which also captures Swift traps) are surfaced in the **Logs** window and summarized. A new **Crash Reports** row in Settings ▸ Diagnostics shows how many are saved, with **Copy Crash Report** (full report to the clipboard), **Show** (reveal in Finder) and **Clear**. So after any crash you can just reopen MoreDock and paste the report — no digging through Console.app.
+
 ## 0.4.2
 
 - 🛡️ **Hardens Clicked Display so a failed move can't take MoreDock down.** The window move now runs entirely on the main thread, fires once per launch instead of on every poll tick, de-duplicates overlapping requests from a single click, and bounds each Accessibility call with a timeout so an unresponsive target app can't hang MoreDock.
