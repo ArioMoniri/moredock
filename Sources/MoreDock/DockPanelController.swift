@@ -483,15 +483,10 @@ private struct DockIconButton: View {
         return baseIconSize
     }
 
+    @MainActor
     private func activate() {
-        let shouldMoveToClickedDisplay = settings.activationDisplayMode == .clickedDisplay && !targetVisibleFrame.isEmpty
-        let clickedDisplayFrame = targetVisibleFrame
-        let moveAfterActivation: @Sendable (pid_t) -> Void = { processIdentifier in
-            guard shouldMoveToClickedDisplay else { return }
-            Task { @MainActor in
-                AccessibilityMoveCoordinator.shared.requestMove(pid: processIdentifier, to: clickedDisplayFrame)
-            }
-        }
+        let shouldMove = settings.activationDisplayMode == .clickedDisplay && !targetVisibleFrame.isEmpty
+        let clickedFrame = targetVisibleFrame
 
         // Folders, stacks, files and Trash just open their target in Finder.
         if item.kind != .application {
@@ -503,59 +498,48 @@ private struct DockIconButton: View {
 
         // For an application, resolve its bundle URL — preferring the running
         // instance — and *open* it. Opening an already-running app both activates it
-        // and sends the reopen event, so an app that is running with no open windows
-        // gets a fresh window, exactly like clicking its icon in the native Dock.
-        // (Plain `activate` only raises existing windows and does nothing when there
-        // are none, which is why a windowless-but-running app couldn't be opened.)
+        // and sends the reopen event, so a running-but-windowless app gets a fresh
+        // window, exactly like clicking its icon in the native Dock.
         let runningApp = item.processIdentifier.flatMap(NSRunningApplication.init(processIdentifier:))
         let appURL = runningApp?.bundleURL
             ?? item.bundleIdentifier.flatMap(NSWorkspace.shared.urlForApplication(withBundleIdentifier:))
             ?? item.url
 
-        guard let appURL else {
-            if let processIdentifier = item.processIdentifier,
-               let app = NSRunningApplication(processIdentifier: processIdentifier) {
-                app.activate(options: [.activateAllWindows])
-                moveAfterActivation(processIdentifier)
-            }
-            return
+        if let appURL {
+            let configuration = NSWorkspace.OpenConfiguration()
+            configuration.activates = true
+            // IMPORTANT: pass no completion handler. NSWorkspace calls the completion
+            // on LaunchServices' own background queue; because this view is main-actor
+            // isolated, Swift's concurrency runtime inserts an executor-isolation
+            // assertion at the closure's entry that traps the moment it fires off the
+            // main actor (EXC_BREAKPOINT in swift_task_isCurrentExecutor). Doing the
+            // work below on the main actor instead avoids that entirely.
+            NSWorkspace.shared.openApplication(at: appURL, configuration: configuration, completionHandler: nil)
+        } else if let processIdentifier = item.processIdentifier,
+                  let app = NSRunningApplication(processIdentifier: processIdentifier) {
+            app.activate(options: [.activateAllWindows])
         }
 
-        let configuration = NSWorkspace.OpenConfiguration()
-        configuration.activates = true
-        let bundleIdentifier = item.bundleIdentifier
-        NSWorkspace.shared.openApplication(at: appURL, configuration: configuration) { app, _ in
-            // Hop back to the main thread before touching AppKit / requesting the
-            // move — NSWorkspace calls this completion on an arbitrary queue.
-            let launchedPID = app?.processIdentifier
-            DispatchQueue.main.async {
-                if let launchedPID {
-                    moveAfterActivation(launchedPID)
-                } else if let bundleIdentifier {
-                    // The app is still coming up; poll for it and fire the move once.
-                    scheduleMoveWhenAppAppears(bundleIdentifier: bundleIdentifier, move: moveAfterActivation)
+        // Clicked Display: move the app's windows onto the clicked screen. This runs
+        // on the main actor (activate() is main-actor isolated). If the app is already
+        // running, move now; the app may also still be (re)launching, so poll briefly
+        // and move again when it appears. The coordinator de-duplicates the two.
+        guard shouldMove else { return }
+        if let processIdentifier = item.processIdentifier {
+            AccessibilityMoveCoordinator.shared.requestMove(pid: processIdentifier, to: clickedFrame)
+        }
+        if let bundleIdentifier = item.bundleIdentifier {
+            Task { @MainActor in
+                for _ in 0..<14 {
+                    if let pid = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier {
+                        AccessibilityMoveCoordinator.shared.requestMove(pid: pid, to: clickedFrame)
+                        return
+                    }
+                    try? await Task.sleep(nanoseconds: 200_000_000)
                 }
             }
         }
     }
-}
-
-/// Polls for `bundleIdentifier`'s running process and invokes `move` exactly once,
-/// on the main thread, when it appears. Prevents the move from firing on every poll
-/// tick (which produced a storm of Accessibility calls).
-@MainActor
-private func scheduleMoveWhenAppAppears(bundleIdentifier: String, move: @escaping @Sendable (pid_t) -> Void) {
-    var attempt = 0
-    func poll() {
-        attempt += 1
-        if let pid = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier {
-            move(pid)
-            return
-        }
-        guard attempt < 14 else { return }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) { poll() }
-    }
-    poll()
 }
 
 private struct DockVisualEffect: NSViewRepresentable {

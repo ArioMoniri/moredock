@@ -1,5 +1,9 @@
 # Release Notes
 
+## 0.4.4
+
+- 💥 **Fixes the crash when opening an app from a dock in Clicked Display mode.** MoreDock passed a completion handler to `NSWorkspace.openApplication`, which LaunchServices invokes on its own background queue; because the dock view is main-actor isolated, Swift's concurrency runtime tripped an executor-isolation assertion (`EXC_BREAKPOINT`) the instant that callback fired off the main actor, killing the app. The click now opens the app with no completion handler and performs the window move entirely on the main actor (polling briefly for the launched app), so there is no cross-thread callback to trap. (Diagnosed straight from the new in-app crash report — thank you.)
+
 ## 0.4.3
 
 - 🧰 **Built-in crash collector.** MoreDock now keeps crash reports itself: an uncaught exception is written to a persistent file before the process dies, and on the next launch both that record and the newest system crash report (`.ips`, which also captures Swift traps) are surfaced in the **Logs** window and summarized. A new **Crash Reports** row in Settings ▸ Diagnostics shows how many are saved, with **Copy Crash Report** (full report to the clipboard), **Show** (reveal in Finder) and **Clear**. So after any crash you can just reopen MoreDock and paste the report — no digging through Console.app.
