@@ -15,6 +15,9 @@ private func installCrashLogger() {
         let stack = exception.callStackSymbols.joined(separator: "\n")
         logger.critical("Uncaught exception \(exception.name.rawValue, privacy: .public): \(exception.reason ?? "<no reason>", privacy: .public)\n\(stack, privacy: .public)")
         NSLog("MoreDock uncaught exception %@: %@", exception.name.rawValue, exception.reason ?? "<no reason>")
+        // Persist it so it can be read back in-app after reopening.
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        CrashReporter.recordException(exception, version: version)
     }
 }
 
@@ -43,6 +46,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.setActivationPolicy(.accessory)
         Diagnostics.logStartup()
         mdLog(settings.persistenceSummary)
+        CrashReporter.surfacePreviousCrashes()
         configureStatusItem()
         dockController.start()
         startTrustMonitor()
