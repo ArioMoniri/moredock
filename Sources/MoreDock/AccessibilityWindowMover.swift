@@ -33,6 +33,9 @@ enum AccessibilityWindowMover {
         guard isTrusted(prompt: prompt) else { return 0 }
 
         let appElement = AXUIElementCreateApplication(processIdentifier)
+        // Bound each Accessibility request so an unresponsive target app can't block
+        // MoreDock's main thread (these calls are synchronous cross-process IPC).
+        AXUIElementSetMessagingTimeout(appElement, 0.5)
         var windowsValue: CFTypeRef?
         guard AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &windowsValue) == .success,
               let windows = windowsValue as? [AXUIElement] else {
@@ -121,8 +124,13 @@ final class AccessibilityMoveCoordinator {
     private var pending: [pid_t: Request] = [:]
     private var pollTimer: Timer?
     private var lastPromptAt: Date?
+    private var lastMoveStartedAt: [pid_t: Date] = [:]
     private let promptCooldown: TimeInterval = 20
     private let maxPollAttempts = 60
+    /// A move for a pid started within this window is treated as in-flight, so a
+    /// single click (which can resolve the pid several times) doesn't kick off
+    /// overlapping bursts of Accessibility calls.
+    private let moveDedupeWindow: TimeInterval = 3
 
     private init() {}
 
@@ -132,7 +140,12 @@ final class AccessibilityMoveCoordinator {
     func requestMove(pid: pid_t, to frame: NSRect) {
         guard !frame.isEmpty else { return }
 
+        if let startedAt = lastMoveStartedAt[pid], Date().timeIntervalSince(startedAt) < moveDedupeWindow {
+            return
+        }
+
         if AccessibilityWindowMover.isTrusted(prompt: false) {
+            lastMoveStartedAt[pid] = Date()
             mdLog("Clicked Display: moving windows of pid \(pid) onto the clicked screen.")
             performMoves(pid: pid, frame: frame)
             return

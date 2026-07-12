@@ -525,19 +525,37 @@ private struct DockIconButton: View {
         configuration.activates = true
         let bundleIdentifier = item.bundleIdentifier
         NSWorkspace.shared.openApplication(at: appURL, configuration: configuration) { app, _ in
-            if let processIdentifier = app?.processIdentifier {
-                moveAfterActivation(processIdentifier)
-            } else if let bundleIdentifier {
-                for attempt in 1...14 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + Double(attempt) * 0.20) {
-                        if let processIdentifier = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier {
-                            moveAfterActivation(processIdentifier)
-                        }
-                    }
+            // Hop back to the main thread before touching AppKit / requesting the
+            // move — NSWorkspace calls this completion on an arbitrary queue.
+            let launchedPID = app?.processIdentifier
+            DispatchQueue.main.async {
+                if let launchedPID {
+                    moveAfterActivation(launchedPID)
+                } else if let bundleIdentifier {
+                    // The app is still coming up; poll for it and fire the move once.
+                    scheduleMoveWhenAppAppears(bundleIdentifier: bundleIdentifier, move: moveAfterActivation)
                 }
             }
         }
     }
+}
+
+/// Polls for `bundleIdentifier`'s running process and invokes `move` exactly once,
+/// on the main thread, when it appears. Prevents the move from firing on every poll
+/// tick (which produced a storm of Accessibility calls).
+@MainActor
+private func scheduleMoveWhenAppAppears(bundleIdentifier: String, move: @escaping @Sendable (pid_t) -> Void) {
+    var attempt = 0
+    func poll() {
+        attempt += 1
+        if let pid = NSRunningApplication.runningApplications(withBundleIdentifier: bundleIdentifier).first?.processIdentifier {
+            move(pid)
+            return
+        }
+        guard attempt < 14 else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.20) { poll() }
+    }
+    poll()
 }
 
 private struct DockVisualEffect: NSViewRepresentable {

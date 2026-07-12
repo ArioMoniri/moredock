@@ -1,6 +1,22 @@
 import AppKit
+import os
 import Sparkle
 import SwiftUI
+
+/// Records an uncaught Objective-C exception to the unified system log before the
+/// process dies. Unlike the in-app Logs window (which is lost on a crash), this
+/// survives in Console.app and the crash report, so an otherwise unreproducible
+/// crash — e.g. an AppKit/Accessibility exception during a Clicked Display move —
+/// leaves its exact name, reason and stack behind. Must be a capture-less function
+/// so it can be used as a C callback.
+private func installCrashLogger() {
+    NSSetUncaughtExceptionHandler { exception in
+        let logger = Logger(subsystem: "com.ariomoniri.moredock", category: "crash")
+        let stack = exception.callStackSymbols.joined(separator: "\n")
+        logger.critical("Uncaught exception \(exception.name.rawValue, privacy: .public): \(exception.reason ?? "<no reason>", privacy: .public)\n\(stack, privacy: .public)")
+        NSLog("MoreDock uncaught exception %@: %@", exception.name.rawValue, exception.reason ?? "<no reason>")
+    }
+}
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
@@ -23,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        installCrashLogger()
         NSApp.setActivationPolicy(.accessory)
         Diagnostics.logStartup()
         mdLog(settings.persistenceSummary)

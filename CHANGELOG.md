@@ -1,5 +1,10 @@
 # Release Notes
 
+## 0.4.2
+
+- 🛡️ **Hardens Clicked Display so a failed move can't take MoreDock down.** The window move now runs entirely on the main thread, fires once per launch instead of on every poll tick, de-duplicates overlapping requests from a single click, and bounds each Accessibility call with a timeout so an unresponsive target app can't hang MoreDock.
+- 🧾 **Adds a crash logger.** If MoreDock ever does hit an uncaught exception, its name, reason and stack are written to the system log (Console.app) and the crash report — so an otherwise unreproducible crash leaves a precise trail.
+
 ## 0.4.1
 
 - 👁️ **Docks stay visible again.** Leftover per-display auto-hide from earlier builds was making customized docks hide themselves; a one-time reset clears it, and turning on **Customize** now starts a dock visible (auto-hide off) instead of inheriting stale auto-hide. You can still turn auto-hide back on per dock.
